@@ -1,0 +1,408 @@
+import { OSZParser } from './oszParser.js';
+import { BeatmapParser } from './beatmapParser.js';
+import { AudioManager } from './audioManager.js';
+import { GameRenderer } from './gameRenderer.js';
+
+class Game {
+    constructor() {
+        this.oszParser = new OSZParser();
+        this.beatmapParser = new BeatmapParser();
+        this.audioManager = new AudioManager();
+        this.renderer = null;
+
+        this.beatmaps = [];
+        this.currentBeatmap = null;
+
+        // 判定与输入
+        this.keyMap = ['d', 'f', 'j', 'k'];     // 默认键位
+        this.pressed = new Set();
+        this.columns = [[], [], [], []];        // 每列的物件列表（按时间）
+        this.nextIndex = [0, 0, 0, 0];          // 每列下一个待判定的索引
+        this.holdingLN = [null, null, null, null]; // 正在持有的LN对象
+
+        // 判定窗口（ms）
+        this.windows = {
+            perfect: 22,
+            great: 46,
+            good: 86,
+            bad: 136,
+            miss: 180
+        };
+
+        // 统计
+        this.stats = {
+            score: 0,
+            combo: 0,
+            acc: 100,
+            totalHits: 0,
+            weightedHits: 0,
+            judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
+        };
+
+        this.animationId = null;
+        this.init();
+    }
+
+    init() {
+        const canvas = document.getElementById('gameCanvas');
+        this.renderer = new GameRenderer(canvas);
+        this.bindEvents();
+    }
+
+    bindEvents() {
+        document.getElementById('oszFile').addEventListener('change', (e) => this.loadFile(e.target.files[0]));
+        document.getElementById('difficultySelect').addEventListener('change', (e) => {
+            const index = parseInt(e.target.value);
+            if (!isNaN(index)) this.selectDifficulty(index);
+        });
+
+        document.getElementById('playBtn').addEventListener('click', () => this.play());
+        document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
+        document.getElementById('stopBtn').addEventListener('click', () => this.stop());
+
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            const speed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = speed.toFixed(1) + 'x';
+            this.audioManager.setPlaybackRate(speed);
+        });
+        document.getElementById('showSV').addEventListener('change', (e) => this.renderer.setShowSV(e.target.checked));
+        document.getElementById('showKeyGroup').addEventListener('change', (e) => this.renderer.setShowKeyGroup(e.target.checked));
+        document.getElementById('scrollSpeed').addEventListener('input', (e) => {
+            const speed = parseFloat(e.target.value);
+            document.getElementById('scrollSpeedValue').textContent = speed;
+            this.renderer.setScrollSpeed(speed);
+        });
+
+        // 键盘输入
+        window.addEventListener('keydown', (e) => this.onKeyDown(e));
+        window.addEventListener('keyup', (e) => this.onKeyUp(e));
+    }
+
+    keyToColumn(key) {
+        const k = key.toLowerCase();
+        return this.keyMap.indexOf(k);
+    }
+
+    onKeyDown(e) {
+        const col = this.keyToColumn(e.key);
+        if (col === -1) return;
+
+        if (!this.pressed.has(col)) {
+            this.pressed.add(col);
+            this.renderer.setPressedLanes(this.pressed);
+            this.tryJudgeOnPress(col);
+        }
+        e.preventDefault();
+    }
+
+    onKeyUp(e) {
+        const col = this.keyToColumn(e.key);
+        if (col === -1) return;
+
+        if (this.pressed.has(col)) {
+            this.pressed.delete(col);
+            this.renderer.setPressedLanes(this.pressed);
+            this.tryJudgeOnRelease(col);
+        }
+        e.preventDefault();
+    }
+
+    tryJudgeOnPress(col) {
+        const t = this.audioManager.getCurrentTime(); // ms
+        const list = this.columns[col];
+        let idx = this.nextIndex[col];
+
+        // 跳过已经过了miss时间的物件
+        while (idx < list.length && (list[idx].time < t - this.windows.miss)) {
+            // 普通note过期或LN头过期 -> Miss
+            const obj = list[idx];
+            if (!obj.judgedHead) {
+                this.applyJudgement('Miss', obj, col, true);
+                obj.judgedHead = true;
+            }
+            idx++;
+        }
+        this.nextIndex[col] = idx;
+
+        if (idx >= list.length) return;
+
+        const obj = list[idx];
+
+        if (!obj.isLongNote) {
+            const diff = Math.abs(obj.time - t);
+            const result = this.getJudgement(diff);
+            if (result) {
+                this.applyJudgement(result, obj, col, true);
+                obj.judgedHead = true;
+                this.nextIndex[col]++;
+            }
+        } else {
+            // LN头判定
+            if (!obj.judgedHead) {
+                const diff = Math.abs(obj.time - t);
+                const result = this.getJudgement(diff);
+                if (result) {
+                    this.applyJudgement(result, obj, col, true);
+                    obj.judgedHead = true;
+                    this.holdingLN[col] = obj; // 开始持有
+                    // LN仍停留在列表里，等待尾判定
+                }
+            }
+        }
+    }
+
+    tryJudgeOnRelease(col) {
+        const t = this.audioManager.getCurrentTime();
+        const obj = this.holdingLN[col];
+        if (!obj) return;
+
+        // LN尾判定
+        const diff = Math.abs(obj.endTime - t);
+        const result = this.getJudgement(diff);
+        if (result) {
+            this.applyJudgement(result, obj, col, false);
+        } else {
+            // 尾部未在窗口，视为Miss
+            this.applyJudgement('Miss', obj, col, false);
+        }
+
+        // 完成LN判定后推进索引到下一个
+        // 当前nextIndex可能仍指向该LN（如果头部时未推进），推进到下一个未判定的
+        const list = this.columns[col];
+        while (this.nextIndex[col] < list.length && list[this.nextIndex[col]] === obj) {
+            this.nextIndex[col]++;
+        }
+        this.holdingLN[col] = null;
+    }
+
+    getJudgement(diffMs) {
+        if (diffMs <= this.windows.perfect) return 'Perfect';
+        if (diffMs <= this.windows.great) return 'Great';
+        if (diffMs <= this.windows.good) return 'Good';
+        if (diffMs <= this.windows.bad) return 'Bad';
+        if (diffMs <= this.windows.miss) return 'Miss';
+        return null;
+    }
+
+    applyJudgement(j, obj, col, isHead) {
+        // 统计
+        const weight = { Perfect: 1.0, Great: 0.9, Good: 0.7, Bad: 0.4, Miss: 0.0 }[j];
+        const scoreAdd = { Perfect: 300, Great: 200, Good: 100, Bad: 50, Miss: 0 }[j];
+
+        if (j === 'Miss') {
+            this.stats.combo = 0;
+        } else {
+            this.stats.combo += 1;
+            this.stats.score += scoreAdd + Math.floor(this.stats.combo * 0.5);
+        }
+
+        this.stats.totalHits += 1;
+        this.stats.weightedHits += weight;
+        this.stats.acc = (this.stats.weightedHits / this.stats.totalHits) * 100;
+        this.stats.judgements[j] = (this.stats.judgements[j] || 0) + 1;
+
+        // 标记物件判定
+        if (obj.isLongNote) {
+            if (isHead) obj.judgedHead = true;
+            else obj.judgedTail = true;
+        } else {
+            obj.judgedHead = true;
+        }
+
+        // 触发打击特效
+        const color = this.renderer.showKeyGroup
+            ? this.renderer.keyGroupColors[obj.keyGroup % this.renderer.keyGroupColors.length]
+            : '#FFFFFF';
+        this.renderer.createHitEffect(col, j, color);
+
+        // 更新渲染器统计显示
+        this.renderer.setStats(this.stats);
+    }
+
+    async loadFile(file) {
+        if (!file) return;
+        try {
+            const ext = file.name.split('.').pop().toLowerCase();
+            let files;
+            if (ext === 'osz') files = await this.oszParser.loadOSZ(file);
+            else if (ext === 'osu') files = await this.oszParser.loadSingleOSU(file);
+            else { alert('不支持的文件格式'); return; }
+
+            this.beatmaps = [];
+            if (files.beatmaps) {
+                for (const bmData of files.beatmaps) {
+                    const beatmap = this.beatmapParser.parse(bmData.content);
+                    this.beatmaps.push({ filename: bmData.filename, data: beatmap });
+                }
+            }
+
+            const select = document.getElementById('difficultySelect');
+            select.innerHTML = '<option value="">选择难度</option>';
+            this.beatmaps.forEach((bm, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = bm.data.metadata.Version || `Difficulty ${index + 1}`;
+                select.appendChild(option);
+            });
+            select.disabled = false;
+
+            if (files.audio) {
+                await this.audioManager.loadAudio(files.audio.blob);
+                document.getElementById('totalTime').textContent =
+                    this.formatTime(this.audioManager.getDuration());
+            }
+
+            if (this.beatmaps.length > 0) {
+                select.value = '0';
+                this.selectDifficulty(0);
+            }
+
+            // 加载背景图
+            if (files.background) {
+                try {
+                    await this.renderer.setBackgroundImageBlob(files.background.blob);
+                } catch (e) {
+                    console.warn('背景加载失败', e);
+                }
+            }
+
+        } catch (e) {
+            console.error('加载失败', e);
+            alert('加载失败: ' + e.message);
+        }
+    }
+
+    selectDifficulty(index) {
+        this.currentBeatmap = this.beatmaps[index].data;
+        this.renderer.setBeatmap(this.currentBeatmap);
+
+        // 列表按列分组
+        this.columns = [[], [], [], []];
+        for (const obj of this.currentBeatmap.hitObjects) {
+            this.columns[obj.column].push(obj);
+            obj.judgedHead = false;
+            obj.judgedTail = false;
+        }
+        for (let c = 0; c < 4; c++) {
+            this.columns[c].sort((a, b) => a.time - b.time);
+            this.nextIndex[c] = 0;
+            this.holdingLN[c] = null;
+        }
+
+        // UI
+        document.getElementById('songTitle').textContent =
+            this.currentBeatmap.metadata.Title || '未知歌曲';
+        document.getElementById('songArtist').textContent =
+            '艺术家: ' + (this.currentBeatmap.metadata.Artist || '未知');
+        document.getElementById('songMapper').textContent =
+            '谱师: ' + (this.currentBeatmap.metadata.Creator || '未知') +
+            ' | 难度: ' + (this.currentBeatmap.metadata.Version || '未知');
+
+        // 重置统计
+        this.stats = {
+            score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
+            judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
+        };
+        this.renderer.setStats(this.stats);
+
+        document.getElementById('playBtn').disabled = false;
+        document.getElementById('pauseBtn').disabled = false;
+        document.getElementById('stopBtn').disabled = false;
+
+        this.renderer.render(0);
+    }
+
+    play() {
+        if (!this.currentBeatmap) return;
+        const t = this.audioManager.getCurrentTime() / 1000;
+        this.audioManager.play(t);
+        this.startGameLoop();
+    }
+
+    pause() {
+        this.audioManager.pause();
+        this.stopGameLoop();
+    }
+
+    stop() {
+        this.audioManager.stop();
+        this.stopGameLoop();
+        this.renderer.render(0);
+        document.getElementById('currentTime').textContent = '0:00';
+        document.getElementById('progressFill').style.width = '0%';
+        // 释放所有持有
+        this.pressed.clear();
+        this.renderer.setPressedLanes(this.pressed);
+        this.holdingLN = [null, null, null, null];
+        this.nextIndex = [0, 0, 0, 0];
+    }
+
+    startGameLoop() {
+        const loop = () => {
+            if (!this.audioManager.getIsPlaying()) return;
+            const currentTime = this.audioManager.getCurrentTime(); // ms
+            this.renderer.render(currentTime);
+
+            const duration = this.audioManager.getDuration();
+            const progress = (currentTime / 1000 / duration) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('currentTime').textContent =
+                this.formatTime(currentTime / 1000);
+
+            // 自动Miss：对于已过miss窗口但未判定的普通note/ln头，给Miss并推进索引
+            for (let c = 0; c < 4; c++) {
+                const list = this.columns[c];
+                while (this.nextIndex[c] < list.length) {
+                    const obj = list[this.nextIndex[c]];
+                    const deadline = obj.isLongNote ? obj.time : obj.time;
+                    if (deadline < currentTime - this.windows.miss && !obj.judgedHead) {
+                        this.applyJudgement('Miss', obj, c, true);
+                        obj.judgedHead = true;
+                        // 普通note直接推进，LN保留等待尾（尾部仍会Miss）
+                        if (!obj.isLongNote) this.nextIndex[c]++;
+                        else {
+                            // 若用户没有按住LN，到尾部也会Miss；这里不推进索引，等尾部Miss后推进
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                // LN尾自动Miss：如果尾部过了miss窗口
+                const holdObj = this.holdingLN[c];
+                if (!holdObj) {
+                    // 如果有LN在列表中，但已经过了尾部miss时限，且尚未判定尾
+                    const idx = this.nextIndex[c];
+                    if (idx < list.length) {
+                        const obj = list[idx];
+                        if (obj.isLongNote && obj.judgedHead && !obj.judgedTail) {
+                            if (obj.endTime < currentTime - this.windows.miss) {
+                                this.applyJudgement('Miss', obj, c, false);
+                                obj.judgedTail = true;
+                                this.nextIndex[c]++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            this.animationId = requestAnimationFrame(loop);
+        };
+        this.animationId = requestAnimationFrame(loop);
+    }
+
+    stopGameLoop() {
+        if (this.animationId) cancelAnimationFrame(this.animationId);
+        this.animationId = null;
+    }
+
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    new Game();
+});

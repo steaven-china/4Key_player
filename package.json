@@ -1,0 +1,16 @@
+{
+  "name": "4key-player",
+  "version": "1.0.0",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron .",
+    "web": "serve ."
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "electron": "38.0.0-beta.6",
+    "serve": "^14.2.0"
+  }
+}
