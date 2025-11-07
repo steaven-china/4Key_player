@@ -10,7 +10,7 @@ export class GameRenderer {
         this.showSV = true;
         this.showKeyGroup = true;
 
-        this.laneWidth = 100;
+        this.laneWidth = 80;
         this.laneCount = 4;
         this.judgmentLineY = 0;
 
@@ -192,13 +192,12 @@ export class GameRenderer {
         // 游戏层：轨道与物件
         this.drawLanes();
         this.drawHitObjects();
-
+        // 命中粒子
+        this.drawHitEffects();
+        this.updateHitEffects();
 
         // 判定线与HUD
         this.drawJudgmentLine();
-        // 命中粒子（注意层级）
-        this.drawHitEffects();
-        this.updateHitEffects();
         this.drawHUD();
 
 
@@ -275,25 +274,47 @@ export class GameRenderer {
         const startX = (this.width - totalWidth) / 2;
         const noteWidth = this.laneWidth - 10;
         const noteHeight = 15;
+        const fadeEarly = 150; // 提前淡出时间
+
+        this.ctx.save();
+
+        // 限制绘制区域：判定线上方
+        this.ctx.beginPath();
+        this.ctx.rect(0, 14, this.width, this.judgmentLineY);
+        this.ctx.clip();
+
+        // 透明度计算函数
+        const calcAlpha = (hitTime) => {
+            const timeToHit = hitTime - this.currentTime;
+            let alpha;
+            if (timeToHit <= fadeEarly) {
+                const fadeProgress = (fadeEarly - timeToHit) / (fadeEarly + this.visibleTrail);
+                alpha = 1 - Math.min(1, fadeProgress);
+            } else {
+                alpha = 1;
+            }
+            return Math.pow(alpha, 0.5); // 柔和淡出
+        };
 
         for (const obj of objs) {
-            // 可见窗口（提前显示，过线保留用于淡出）
             const lastTime = obj.isLongNote ? obj.endTime : obj.time;
             if (lastTime < this.currentTime - this.visibleTrail) continue;
             if (obj.time > this.currentTime + this.visibleLeadTime) continue;
 
             const x = startX + obj.column * this.laneWidth;
-            const color = this.showKeyGroup ? this.keyGroupColors[obj.keyGroup % this.keyGroupColors.length] : '#FFFFFF';
+            const color = this.showKeyGroup
+                ? this.keyGroupColors[obj.keyGroup % this.keyGroupColors.length]
+                : '#FFFFFF';
 
             if (obj.isLongNote) {
                 const headY = this.noteYAt(obj.time);
                 const tailY = this.noteYAt(obj.endTime);
 
-                // 身体仅绘制到判定线以上
+                // 限制身体位置在判定线上方
                 const visibleHeadY = Math.min(headY, this.judgmentLineY);
                 const visibleTailY = Math.min(tailY, this.judgmentLineY);
-                const bodyTop = Math.max(Math.min(visibleHeadY, visibleTailY), -50);
-                const bodyBottom = Math.min(Math.max(visibleHeadY, visibleTailY), this.height + 50);
+                const bodyTop = Math.max(Math.min(visibleHeadY, visibleTailY), 0);
+                const bodyBottom = Math.min(Math.max(visibleHeadY, visibleTailY), this.judgmentLineY);
                 const bodyLen = Math.max(0, bodyBottom - bodyTop);
 
                 if (bodyLen > 0) {
@@ -307,28 +328,30 @@ export class GameRenderer {
                     this.ctx.strokeRect(x + 5, bodyTop, noteWidth, bodyLen);
                 }
 
-                // 头部淡出（到达时间后按保留时长衰减）
-                if (headY > -50 && headY < this.height + 50) {
-                    const post = Math.max(0, this.currentTime - obj.time);
-                    const postAlpha = 1 - Math.min(1, post / this.visibleTrail);
-                    this.drawNoteRect(x, headY, noteWidth, noteHeight, color, postAlpha);
+                // 头部（只显示判定线上方）
+                if (headY >= 0 && headY < this.judgmentLineY) {
+                    this.drawNoteRect(x, headY, noteWidth, noteHeight, color, calcAlpha(obj.time));
                 }
-                // 尾部淡出
-                if (tailY > -5 && tailY < this.height + 5) {
-                    const post = Math.max(0, this.currentTime - obj.endTime);
-                    const postAlpha = 1 - Math.min(1, post / this.visibleTrail);
-                    this.drawNoteRect(x, tailY, noteWidth, noteHeight * 0.3, this.adjustBrightness(color, -20), postAlpha);
+
+                // 尾部
+                if (tailY >= 0 && tailY < this.judgmentLineY) {
+                    this.drawNoteRect(
+                        x, tailY, noteWidth, noteHeight * 0.3,
+                        this.adjustBrightness(color, -20),
+                        calcAlpha(obj.endTime)
+                    );
                 }
             } else {
                 const y = this.noteYAt(obj.time);
-                if (y < -50 || y > this.height + 50) continue;
+                if (y < 0 || y > this.judgmentLineY) continue; // 跳过判定线下的音符
 
-                const post = Math.max(0, this.currentTime - obj.time);
-                const postAlpha = 1 - Math.min(1, post / this.visibleTrail);
-                this.drawNoteRect(x, y, noteWidth, noteHeight, color, postAlpha);
+                this.drawNoteRect(x, y, noteWidth, noteHeight, color, calcAlpha(obj.time));
             }
         }
+
+        this.ctx.restore(); // 恢复绘制区域
     }
+
 
     drawNoteRect(x, y, w, h, color, alphaFactor = 1.0) {
         // 距离判定线的透明度（前段）
@@ -349,8 +372,8 @@ export class GameRenderer {
         this.ctx.shadowBlur = 0;
     }
 
-    // 命中粒子：只向上方，短生命周期；层级在游戏层最下（已在render中先绘制）
-    createHitEffect(column, judgement, keyGroupColor) {
+    // 命中粒子：只向上方，短生命周期；
+    createHitEffect(column,keyGroupColor) {
         const totalWidth = this.laneWidth * this.laneCount;
         const startX = (Math.random()*10)+(this.width - totalWidth) / 2;
         const x = startX + (column * this.laneWidth) + this.laneWidth / 2;
@@ -361,7 +384,7 @@ export class GameRenderer {
         for (let i = 0; i < particleCount; i++) {
             // 上方扇形（-100° 到 -80°附近），vy为负
             const angle = -Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 2); // 约 ±15°
-            const base = 1.5;
+            const base = 0.8;
             const speed = base * Math.sqrt(Math.random());
             const vx = Math.cos(angle) * speed * 0.8; // 横向更弱
             const vy = Math.sin(angle) * speed; // 负值，向上
@@ -387,11 +410,11 @@ export class GameRenderer {
             const e = this.hitEffects[i];
             e.x += e.vx;
             e.y += e.vy;
-            e.vy -= 0.07; // 轻微重力
+            e.vy -= 0.03; // 轻微重力
             e.life -= e.decay;
-            if (e.isExplosion) e.size *= 0.9; else e.size *= 0.86;
+            if (e.isExplosion) e.size *= 0.9; else e.size *= 0.88;
             // 出界或生命完结立即释放
-            if (e.life > 0 && e.y > 100 && e.y < this.height + 100) {
+            if (e.life > 0 && e.y > 30 && e.y < this.height + 30) {
                 next.push(e);
             }
         }
@@ -403,7 +426,7 @@ export class GameRenderer {
         // 最底层（在render中先于轨道和物件绘制）
         for (const e of this.hitEffects) {
             if (e.isExplosion) {
-                const g = this.ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.size);
+                const g = this.ctx.createRadialGradient(e.x, e.y, 100, e.x, e.y, e.size);
                 g.addColorStop(0, this.setAlpha(e.color, e.life * 0.6,e.opacity=0.6));
                 g.addColorStop(1, this.setAlpha(e.color, 0));
                 this.ctx.fillStyle = g;

@@ -41,6 +41,10 @@ class Game {
 
         this.animationId = null;
         this.init();
+        this.hitsound = new Audio('res/Enda.wav');
+        this.hitsound.volume = 1;
+        this.dosound = new Audio('res/Okar.wav');
+        this.dosound.volume = 1;
     }
 
     init() {
@@ -91,6 +95,7 @@ class Game {
             this.pressed.add(col);
             this.renderer.setPressedLanes(this.pressed);
             this.tryJudgeOnPress(col);
+            this.play_hit();
         }
         e.preventDefault();
     }
@@ -210,15 +215,36 @@ class Game {
         }
 
         // 触发打击特效
-        const color = this.renderer.showKeyGroup
-            ? this.renderer.keyGroupColors[obj.keyGroup % this.renderer.keyGroupColors.length]
-            : '#FFFFFF';
-        this.renderer.createHitEffect(col, j, color);
+        let color = '#FFFFFF'; // 默认颜色
+        if (this.renderer.showKeyGroup) {
+            // 只有 j 不是 'Miss' 时才取对应的颜色
+            if (j !== 'Miss') {
+                if (j === 'Bad') {
+                    color = '#afaeae';
+                }else if(j === 'Great') {
+                    color = '#7ecca7';
+                } else {
+                    const colors = this.renderer.keyGroupColors;
+                    const index = obj.keyGroup % colors.length;
+                    color = colors[index];
+                }
+                this.Okar_hit();
+            }
+
+        }
+        this.renderer.createHitEffect(col,color);
 
         // 更新渲染器统计显示
         this.renderer.setStats(this.stats);
     }
-
+    play_hit(){
+        const hit = this.hitsound.cloneNode();
+        hit.play();
+    }
+    Okar_hit(){
+        const hit = this.dosound.cloneNode();
+        hit.play();
+    }
     async loadFile(file) {
         if (!file) return;
         try {
