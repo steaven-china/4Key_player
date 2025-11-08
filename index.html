@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <script src="renderer.js" rel="text/javascript"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="module" src="src/main.js"></script>
 <body>
 <div class="container">
@@ -28,8 +28,8 @@
             <h2 id="songTitle">未加载铺面</h2>
             <p id="songArtist"></p>
             <p id="songMapper"></p>
-            <div class="settings-panel">
-                <h3>设置</h3>
+            <div class="settings-panel" id="draggablePanel">
+                <h3 class="settings-header">设置</h3>
                 <div class="setting-item">
                     <label>
                         <input type="checkbox" id="showSV" checked>
@@ -49,7 +49,7 @@
                 </div>
             </div>
         </div>
-        <div class="playback-controls">
+        <div class="playback-controls" id="draggableSettings">
             <button id="playBtn" disabled>播放</button>
             <button id="pauseBtn" disabled>暂停</button>
             <button id="stopBtn" disabled>停止</button>

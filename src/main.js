@@ -13,6 +13,11 @@ class Game {
             console.log("音乐播放结束");
             this.stop();
             this.isend = true;
+            this.stats = {
+                score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
+                judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
+            };
+            GameRenderer.hitEffects = null;
         }
         this.beatmaps = [];
         this.currentBeatmap = null;
@@ -139,13 +144,19 @@ class Game {
         });
     }
     togglePause() {
-        if (!this.currentBeatmap) return; // 没谱面不操作
+        if (!this.currentBeatmap) return;
+
         if (this.isntPaused) {
             this.pause();
         } else {
-            this.play(!this.isend);
+            // 恢复播放前清空按键状态，避免 ESC 残留触发判定
+            this.pressed.clear();
+            this.renderer.setPressedLanes(this.pressed);
+
+            this.play(this.isend);
         }
     }
+
     keyToColumn(key) {
         const k = key.toLowerCase();
         return this.keyMap.indexOf(k);
@@ -357,11 +368,16 @@ class Game {
                     console.warn('背景加载失败', e);
                 }
             }
+            const target = document.getElementById('gameCanvas'); // 你要滚动到的div
+            if (target) {
+                target.scrollIntoView({behavior: 'smooth'}); // 平滑滚动
+            }
 
         } catch (e) {
             console.error('加载失败', e);
             alert('加载失败: ' + e.message);
         }
+
     }
 
     selectDifficulty(index) {
@@ -415,25 +431,36 @@ class Game {
         const overlay = document.getElementById('pauseOverlay');
         overlay.style.opacity = '0.8';
         overlay.innerHTML = '<div style="color:white;font-size:32px;text-align:center;margin-top:40vh;">按任意键开始...</div>';
-
         // 一次性按键监听
-        const startHandler = (_) => {
-            // 移除提示与监听
+        const startHandler = (e) => {
+            // ① 如果按的是 Esc，则不启动
+            if (e.key === 'Escape') return;
+
+            // ② 否则真的开始
             window.removeEventListener('keydown', startHandler);
             overlay.style.opacity = '0';
             overlay.innerHTML = '';
             this.waitingForStart = false;
-            if(ev) this.stats = {
-                score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
-                judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
-            };
-            // 真正开始播放
+
+            if (ev) {
+                this.stats = {
+                    score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
+                    judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
+                };
+            }
+
             this.startGame();
             this.isend = false;
         };
         window.addEventListener('keydown', startHandler);
+
+        window.addEventListener('keydown', startHandler);
     }
     startGame() {
+        // 清空所有按键状态，防止恢复时有按键残留
+        this.pressed.clear();
+        this.renderer.setPressedLanes(this.pressed);
+
         const t = this.audioManager.getCurrentTime() / 1000;
         this.audioManager.play(t);
         this.startGameLoop();
@@ -443,12 +470,14 @@ class Game {
     }
 
 
+
     pause() {
         this.audioManager.pause();
         this.stopGameLoop();
         // 让遮罩层变暗
         const overlay = document.getElementById('pauseOverlay');
         overlay.style.opacity = '0.6'; // 暗化程度，可调整
+        overlay.innerHTML = '<div style="color:white;font-size:32px;text-align:center;margin-top:40vh;">暂停中</div>';
         this.isntPaused = false;
     }
 
@@ -467,6 +496,7 @@ class Game {
         const overlay = document.getElementById('pauseOverlay');
         overlay.style.opacity = '0.6'; // 暗化程度，可调整
         this.isntPaused = false;
+        this.isend = true;
     }
 
     startGameLoop() {

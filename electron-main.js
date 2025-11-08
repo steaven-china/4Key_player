@@ -1,5 +1,4 @@
 const { app, BrowserWindow ,Menu,ipcMain} = require('electron');
-const path = require('path');
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -12,7 +11,6 @@ function createWindow() {
     });
     win.setFullScreen(true);
     win.loadFile('index.html').then(null);
-    win.webContents.openDevTools();
     Menu.setApplicationMenu(null);
     ipcMain.on('exit', () => {win.close()})
 }
