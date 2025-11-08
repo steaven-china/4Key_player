@@ -47,6 +47,7 @@ class Game {
         this.dosound.volume = 1;
         this.isAuto=false;
         this.getAutos();
+        this.isntPaused = false;
     }
     getAutos(){
         if (this.isAuto){
@@ -109,8 +110,36 @@ class Game {
             console.log(this.isAuto);       // 打印当前状态
             this.getAutos();
         });
+        let escPressTimer = null;
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                // 如果已经在计时，不再重复
+                if (escPressTimer) return;
+                // 开始计时
+                escPressTimer = setTimeout(() => {
+                    this.togglePause(); // 按住一秒触发暂停/恢复
+                    escPressTimer = null; // 清除计时器引用
+                }, 1000); // 长按 1000 ms
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Escape') {
+                // 取消长按触发
+                if (escPressTimer) {
+                    clearTimeout(escPressTimer);
+                    escPressTimer = null;
+                }
+            }
+        });
     }
-
+    togglePause() {
+        if (!this.currentBeatmap) return; // 没谱面不操作
+        if (this.isntPaused) {
+            this.pause();
+        } else {
+            this.play();
+        }
+    }
     keyToColumn(key) {
         const k = key.toLowerCase();
         return this.keyMap.indexOf(k);
@@ -372,13 +401,25 @@ class Game {
     play() {
         if (!this.currentBeatmap) return;
         const t = this.audioManager.getCurrentTime() / 1000;
+        this.stats = {
+            score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
+            judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
+        };
         this.audioManager.play(t);
         this.startGameLoop();
+        // 恢复全透明
+        const overlay = document.getElementById('pauseOverlay');
+        overlay.style.opacity = '0';
+        this.isntPaused = true;
     }
 
     pause() {
         this.audioManager.pause();
         this.stopGameLoop();
+        // 让遮罩层变暗
+        const overlay = document.getElementById('pauseOverlay');
+        overlay.style.opacity = '0.6'; // 暗化程度，可调整
+        this.isntPaused = false;
     }
 
     stop() {
@@ -392,6 +433,10 @@ class Game {
         this.renderer.setPressedLanes(this.pressed);
         this.holdingLN = [null, null, null, null];
         this.nextIndex = [0, 0, 0, 0];
+        // 让遮罩层变暗
+        const overlay = document.getElementById('pauseOverlay');
+        overlay.style.opacity = '0.6'; // 暗化程度，可调整
+        this.isntPaused = false;
     }
 
     startGameLoop() {

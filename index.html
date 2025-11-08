@@ -19,6 +19,7 @@
             <label for="difficultySelect"><select id="difficultySelect" class="difficulty-select" disabled>
                 <option value="">选择难度</option>
             </select></label>
+            <button onclick="exit();">EXIT</button>
         </div>
     </header>
 
@@ -57,10 +58,7 @@
                 <label for="speedSlider"><input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1"></label>
             </div>
         </div>
-
-
     </div>
-
     <div class="game-container">
         <canvas id="gameCanvas"></canvas>
         <div class="progress-bar">
@@ -69,10 +67,8 @@
                 <span id="currentTime">0:00</span>
                 <span id="totalTime">0:00</span>
             </div>
-        </div>
+        </div><div id="pauseOverlay"></div>
     </div>
-
-    <button onclick="exit();">EXIT</button>
 </div>
 
 

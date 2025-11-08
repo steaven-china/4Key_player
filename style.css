@@ -9,15 +9,15 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
-    padding: 20px;
+    padding: 0px;
 }
 
 .container {
-    max-width: 1200px;
+    /*max-width: 1200px;*/
     margin: 0 auto;
     background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    padding: 30px;
+    border-radius: 0;
+    padding: 0;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
@@ -141,9 +141,9 @@ h1 {
 }
 
 .game-container {
-    margin-bottom: 30px;
+    margin-bottom: 0px;
     background: #000;
-    border-radius: 12px;
+    border-radius: 0;
     overflow: hidden;
     position: relative;
 }
@@ -210,6 +210,7 @@ h1 {
 ::-webkit-scrollbar {
     width: 4px;
     height: 4px;
+    opacity: 0.6;
     background-color: transparent; // 这里默认隐藏
 }
 /*悬浮时才显示*/
@@ -233,4 +234,16 @@ h1 {
 }
 :hover::-webkit-scrollbar-thumb {
     background-color: #b3b3b3;
+}
+#pauseOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: black;
+    opacity: 0; /* 初始透明 */
+    pointer-events: none; /* 防止遮挡点击 */
+    transition: opacity 0.3s ease; /* 平滑淡入淡出 */
+    z-index: 9999; /* 确保在最上层 */
 }

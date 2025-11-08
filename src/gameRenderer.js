@@ -10,7 +10,7 @@ export class GameRenderer {
         this.showSV = true;
         this.showKeyGroup = true;
 
-        this.laneWidth = 80;
+        this.laneWidth = 120;
         this.laneCount = 4;
         this.judgmentLineY = 0;
 
