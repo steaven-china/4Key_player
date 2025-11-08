@@ -9,7 +9,7 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
-    padding: 0px;
+    padding: 0;
 }
 
 .container {
@@ -141,7 +141,7 @@ h1 {
 }
 
 .game-container {
-    margin-bottom: 0px;
+    margin-bottom: 0;
     background: #000;
     border-radius: 0;
     overflow: hidden;

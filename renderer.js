@@ -5,16 +5,16 @@ window.addEventListener("DOMContentLoaded", () => {
     console.log(gameCanvas.style.height);
 });
 const userAgent = navigator.userAgent.toLowerCase()
-// 这个if else基本不会冲突
+let exit;
 if (userAgent.indexOf('electron/') > -1){
-    const {ipcRenderer,webFrame} = require("electron")
+    const { ipcRenderer, webFrame } = require('electron');
     webFrame.setZoomFactor(1);
-    function exit() {
+    exit = function() {
         ipcRenderer.send('exit');
-    }
-}else {
-    function exit() {
+    };
+} else {
+    exit = function() {
         process.exit();
-    }
+    };
 }
 
