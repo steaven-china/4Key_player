@@ -45,12 +45,36 @@ class Game {
         this.hitsound.volume = 1;
         this.dosound = new Audio('res/Okar.wav');
         this.dosound.volume = 1;
+        this.isAuto=false;
+        this.getAutos();
     }
+    getAutos(){
+        if (this.isAuto){
+            this.windows = {
+                perfect : 1,
+                great : 2,
+                good : 3,
+                bad : 4,
+                miss : 5,
+                max_window : 1
+            };
+        } else{
+            this.windows = {
+                perfect : 22,
+                great : 46,
+                good : 86,
+                bad : 136,
+                miss : 180,
+                max_window : 179
+            };
+        }
 
+    }
     init() {
         const canvas = document.getElementById('gameCanvas');
         this.renderer = new GameRenderer(canvas);
         this.bindEvents();
+        this.getAutos();
     }
 
     bindEvents() {
@@ -80,6 +104,11 @@ class Game {
         // 键盘输入
         window.addEventListener('keydown', (e) => this.onKeyDown(e));
         window.addEventListener('keyup', (e) => this.onKeyUp(e));
+        document.getElementById('autoPlayBtn').addEventListener('change', (e) => {
+            this.isAuto = e.target.checked; // 赋值
+            console.log(this.isAuto);       // 打印当前状态
+            this.getAutos();
+        });
     }
 
     keyToColumn(key) {
@@ -227,10 +256,12 @@ class Game {
                     const colors = this.renderer.keyGroupColors;
                     const index = obj.keyGroup % colors.length;
                     color = colors[index];
+                    if (j === 'Perfect') {
+                        this.renderer.createHitEffect(col,'#eade57');
+                    }
                 }
-                this.Okar_hit();
             }
-
+            this.Okar_hit();
         }
         this.renderer.createHitEffect(col,color);
 
@@ -382,7 +413,7 @@ class Game {
                     const obj = list[this.nextIndex[c]];
                     const deadline = obj.isLongNote ? obj.time : obj.time;
                     if (deadline < currentTime - this.windows.miss && !obj.judgedHead) {
-                        this.applyJudgement('Miss', obj, c, true);
+                        this.applyJudgement(this.isAuto?'Perfect':'Miss', obj, c, true);
                         obj.judgedHead = true;
                         // 普通note直接推进，LN保留等待尾（尾部仍会Miss）
                         if (!obj.isLongNote) this.nextIndex[c]++;
@@ -402,8 +433,8 @@ class Game {
                     if (idx < list.length) {
                         const obj = list[idx];
                         if (obj.isLongNote && obj.judgedHead && !obj.judgedTail) {
-                            if (obj.endTime < currentTime - this.windows.miss) {
-                                this.applyJudgement('Miss', obj, c, false);
+                            if (obj.endTime < currentTime - this.windows.max_window) {
+                                this.applyJudgement(this.isAuto?'Perfect':'Miss', obj, c, false);
                                 obj.judgedTail = true;
                                 this.nextIndex[c]++;
                             }
