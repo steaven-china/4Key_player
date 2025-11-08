@@ -14,7 +14,7 @@ export class AudioManager {
         return new Promise((resolve, reject) => {
             const url = URL.createObjectURL(audioBlob);
             this.audio = new Audio(url);
-            this.audio.volume = 0.6;
+            this.audio.volume = 0.26;
 
             this.audio.addEventListener('loadeddata', () => {
                 resolve(this.audio);
