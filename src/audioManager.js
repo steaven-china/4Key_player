@@ -4,6 +4,7 @@ export class AudioManager {
         this.audio = null;
         this.audioContext = null;
         this.sourceNode = null;
+        this.onEnded = null;
         this.isPlaying = false;
         this.startTime = 0;
         this.pauseTime = 0;
@@ -31,6 +32,10 @@ export class AudioManager {
             this.audio.play();
             this.isPlaying = true;
             this.startTime = startTime;
+            this.audio.onended = () => {
+                this.isPlaying = false;
+                if (this.onEnded) this.onEnded(); // <-- 调用回调
+            };
         }
     }
 

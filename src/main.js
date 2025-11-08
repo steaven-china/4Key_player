@@ -9,10 +9,19 @@ class Game {
         this.beatmapParser = new BeatmapParser();
         this.audioManager = new AudioManager();
         this.renderer = null;
-
+        this.audioManager.onEnded = () => {
+            console.log("音乐播放结束");
+            this.stop();
+            this.isend = true;
+            this.stats = {
+                score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
+                judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
+            };
+            GameRenderer.hitEffects = null;
+        }
         this.beatmaps = [];
         this.currentBeatmap = null;
-
+        this.isend = true;
         // 判定与输入
         this.keyMap = ['d', 'f', 'j', 'k'];     // 默认键位
         this.pressed = new Set();
@@ -44,9 +53,11 @@ class Game {
         this.hitsound = new Audio('res/Enda.wav');
         this.hitsound.volume = 1;
         this.dosound = new Audio('res/Okar.wav');
-        this.dosound.volume = 1;
+        this.dosound.volume = 0.7;
         this.isAuto=false;
         this.getAutos();
+        this.isntPaused = false;
+
     }
     getAutos(){
         if (this.isAuto){
@@ -69,6 +80,7 @@ class Game {
             };
         }
 
+
     }
     init() {
         const canvas = document.getElementById('gameCanvas');
@@ -84,7 +96,7 @@ class Game {
             if (!isNaN(index)) this.selectDifficulty(index);
         });
 
-        document.getElementById('playBtn').addEventListener('click', () => this.play());
+        document.getElementById('playBtn').addEventListener('click', () => this.play(true));
         document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
         document.getElementById('stopBtn').addEventListener('click', () => this.stop());
 
@@ -109,6 +121,40 @@ class Game {
             console.log(this.isAuto);       // 打印当前状态
             this.getAutos();
         });
+        let escPressTimer = null;
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                // 如果已经在计时，不再重复
+                if (escPressTimer) return;
+                // 开始计时
+                escPressTimer = setTimeout(() => {
+                    this.togglePause(); // 按住一秒触发暂停/恢复
+                    escPressTimer = null; // 清除计时器引用
+                }, 1000); // 长按 1000 ms
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Escape') {
+                // 取消长按触发
+                if (escPressTimer) {
+                    clearTimeout(escPressTimer);
+                    escPressTimer = null;
+                }
+            }
+        });
+    }
+    togglePause() {
+        if (!this.currentBeatmap) return;
+
+        if (this.isntPaused) {
+            this.pause();
+        } else {
+            // 恢复播放前清空按键状态，避免 ESC 残留触发判定
+            this.pressed.clear();
+            this.renderer.setPressedLanes(this.pressed);
+
+            this.play(this.isend);
+        }
     }
 
     keyToColumn(key) {
@@ -322,11 +368,16 @@ class Game {
                     console.warn('背景加载失败', e);
                 }
             }
+            const target = document.getElementById('gameCanvas'); // 你要滚动到的div
+            if (target) {
+                target.scrollIntoView({behavior: 'smooth'}); // 平滑滚动
+            }
 
         } catch (e) {
             console.error('加载失败', e);
             alert('加载失败: ' + e.message);
         }
+
     }
 
     selectDifficulty(index) {
@@ -369,16 +420,65 @@ class Game {
         this.renderer.render(0);
     }
 
-    play() {
+    play(ev) {
         if (!this.currentBeatmap) return;
+
+        // 如果已经在等待，就不重复触发
+        if (this.waitingForStart) return;
+
+        // 设置状态为等待按键
+        this.waitingForStart = true;
+        const overlay = document.getElementById('pauseOverlay');
+        overlay.style.opacity = '0.8';
+        overlay.innerHTML = '<div style="color:white;font-size:32px;text-align:center;margin-top:40vh;">按任意键开始...</div>';
+        // 一次性按键监听
+        const startHandler = (e) => {
+            // ① 如果按的是 Esc，则不启动
+            if (e.key === 'Escape') return;
+
+            // ② 否则真的开始
+            window.removeEventListener('keydown', startHandler);
+            overlay.style.opacity = '0';
+            overlay.innerHTML = '';
+            this.waitingForStart = false;
+
+            if (ev) {
+                this.stats = {
+                    score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
+                    judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
+                };
+            }
+
+            this.startGame();
+            this.isend = false;
+        };
+        window.addEventListener('keydown', startHandler);
+
+        window.addEventListener('keydown', startHandler);
+    }
+    startGame() {
+        // 清空所有按键状态，防止恢复时有按键残留
+        this.pressed.clear();
+        this.renderer.setPressedLanes(this.pressed);
+
         const t = this.audioManager.getCurrentTime() / 1000;
         this.audioManager.play(t);
         this.startGameLoop();
+        const overlay = document.getElementById('pauseOverlay');
+        overlay.style.opacity = '0';
+        this.isntPaused = true;
     }
+
+
 
     pause() {
         this.audioManager.pause();
         this.stopGameLoop();
+        // 让遮罩层变暗
+        const overlay = document.getElementById('pauseOverlay');
+        overlay.style.opacity = '0.6'; // 暗化程度，可调整
+        overlay.innerHTML = '<div style="color:white;font-size:32px;text-align:center;margin-top:40vh;">暂停中</div>';
+        this.isntPaused = false;
     }
 
     stop() {
@@ -392,6 +492,11 @@ class Game {
         this.renderer.setPressedLanes(this.pressed);
         this.holdingLN = [null, null, null, null];
         this.nextIndex = [0, 0, 0, 0];
+        // 让遮罩层变暗
+        const overlay = document.getElementById('pauseOverlay');
+        overlay.style.opacity = '0.6'; // 暗化程度，可调整
+        this.isntPaused = false;
+        this.isend = true;
     }
 
     startGameLoop() {
