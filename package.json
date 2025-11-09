@@ -1,6 +1,6 @@
 {
   "name": "4key-player",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "main": "electron-main.js",
   "author": {
     "email": "rgterff@163.com",
