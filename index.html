@@ -8,53 +8,60 @@
 </head>
 <script src="renderer.js" rel="text/javascript"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/i18next/25.5.2/i18next.min.js"></script>
 <script type="module" src="src/main.js"></script>
+<script src="i18essential.js" rel="text/javascript"></script>
 <body>
 <div class="container">
     <header>
-        <h1>OSU 4Key 谱面播放器</h1>
+        <h1 data-i18n="title">OSU 4Key Chart Player</h1>
         <div class="controls">
             <input type="file" id="oszFile" accept=".osz,.osu" class="file-input">
-            <label for="oszFile" class="file-label">选择铺面文件</label>
+            <label for="oszFile" class="file-label" data-i18n="controls.chooseFile">Chose The "OSZ" File</label>
             <label for="difficultySelect"><select id="difficultySelect" class="difficulty-select" disabled>
-                <option value="">选择难度</option>
+                <option value="" data-i18n="controls.exit">Difficulty</option>
             </select></label>
-            <button onclick="exit();">EXIT</button>
+            <button onclick="exit();" data-i18n="controls.exit">EXIT</button>
         </div>
     </header>
 
     <div class="info-panel">
         <div class="song-info">
-            <h2 id="songTitle">未加载铺面</h2>
+            <h2 id="songTitle" data-i18n="info.notLoaded">Chart Isn't Load In</h2>
             <p id="songArtist"></p>
             <p id="songMapper"></p>
             <div class="settings-panel" id="draggablePanel">
-                <h3 class="settings-header">设置</h3>
+                <h3 class="settings-header" data-i18n="settings.title">Settings</h3>
                 <div class="setting-item">
                     <label>
-                        <input type="checkbox" id="showSV" checked>
-                        显示SV变化
+                        <input type="checkbox" id="showSV"  checked>
+                        <span data-i18n="settings.showSV">Show SV</span>
                     </label>
                 </div>
                 <div class="setting-item">
                     <label>
-                        <input type="checkbox" id="showKeyGroup" checked>
-                        显示键组颜色
+                        <input type="checkbox" id="showKeyGroup"  checked>
+                        <span data-i18n="settings.showKeyGroup">Show Key Group Color</span>
                     </label>
                 </div>
                 <div class="setting-item">
-                    <label>下落速度: <span id="scrollSpeedValue">20</span></label>
-                    <label for="scrollSpeed"></label><input type="range" id="scrollSpeed" min="10" max="60" value="20">
-                    <label for="autoPlayBtn"><input type="checkbox" id="autoPlayBtn">自动游玩</label>
+                    <label><span data-i18n="settings.scrollSpeed">Scroll Speed:</span><span id="scrollSpeedValue">30</span></label>
+                    <label for="scrollSpeed"></label><input type="range" id="scrollSpeed" min="10" max="60" value="30">
+                    <label for="autoPlayBtn"><input type="checkbox" id="autoPlayBtn" ><span data-i18n="settings.autoPlay">AutoPlay</span></label>
+                    <label for="languageSelect" data-i18n="settings.language">Language:</label>
+                    <select id="languageSelect">
+                        <option value="en">English</option>
+                        <option value="zh">中文</option>
+                    </select>
                 </div>
             </div>
         </div>
         <div class="playback-controls" id="draggableSettings">
-            <button id="playBtn" disabled>播放</button>
-            <button id="pauseBtn" disabled>暂停</button>
-            <button id="stopBtn" disabled>停止</button>
+            <button id="playBtn" disabled>Play</button>
+            <button id="pauseBtn" disabled>Pause</button>
+            <button id="stopBtn" disabled>Stop</button>
             <div class="speed-control">
-                <label>速度: <span id="speedValue">1.0x</span></label>
+                <label>Speed <span id="speedValue">1.0x</span></label>
                 <label for="speedSlider"><input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1"></label>
             </div>
         </div>

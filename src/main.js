@@ -18,6 +18,9 @@ class Game {
                 judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
             };
             GameRenderer.hitEffects = null;
+            // 清空列物件缓存（如果需要完全回收）
+            this.columns = [[], [], [], []];
+            stop();
         }
         this.beatmaps = [];
         this.currentBeatmap = null;
@@ -401,10 +404,10 @@ class Game {
         document.getElementById('songTitle').textContent =
             this.currentBeatmap.metadata.Title || '未知歌曲';
         document.getElementById('songArtist').textContent =
-            '艺术家: ' + (this.currentBeatmap.metadata.Artist || '未知');
+            'Artist: ' + (this.currentBeatmap.metadata.Artist || '未知');
         document.getElementById('songMapper').textContent =
-            '谱师: ' + (this.currentBeatmap.metadata.Creator || '未知') +
-            ' | 难度: ' + (this.currentBeatmap.metadata.Version || '未知');
+            'Chart: ' + (this.currentBeatmap.metadata.Creator || '未知') +
+            ' | Difficult: ' + (this.currentBeatmap.metadata.Version || '未知');
 
         // 重置统计
         this.stats = {
@@ -430,7 +433,7 @@ class Game {
         this.waitingForStart = true;
         const overlay = document.getElementById('pauseOverlay');
         overlay.style.opacity = '0.8';
-        overlay.innerHTML = '<div style="color:white;font-size:32px;text-align:center;margin-top:40vh;">按任意键开始...</div>';
+        overlay.innerHTML = '<div style="color:white;font-size:32px;text-align:center;margin-top:40vh;">Press Any Button...</div>';
         // 一次性按键监听
         const startHandler = (e) => {
             // ① 如果按的是 Esc，则不启动
@@ -457,6 +460,10 @@ class Game {
         window.addEventListener('keydown', startHandler);
     }
     startGame() {
+        const settingsPanel = document.querySelector('.settings-panel');
+        const playbackPanel = document.querySelector('.playback-controls');
+        settingsPanel.classList.toggle('.settings-panel',false);
+        playbackPanel.classList.toggle('.playback-controls',false);
         // 清空所有按键状态，防止恢复时有按键残留
         this.pressed.clear();
         this.renderer.setPressedLanes(this.pressed);
@@ -477,27 +484,56 @@ class Game {
         // 让遮罩层变暗
         const overlay = document.getElementById('pauseOverlay');
         overlay.style.opacity = '0.6'; // 暗化程度，可调整
-        overlay.innerHTML = '<div style="color:white;font-size:32px;text-align:center;margin-top:40vh;">暂停中</div>';
+        overlay.innerHTML = '<div style="color:white;font-size:50px;text-align:center;margin-top:40vh;">Pausing...</div>';
+        const settingsPanel = document.querySelector('.settings-panel');
+        const playbackPanel = document.querySelector('.playback-controls');
+        settingsPanel.classList.toggle('active',true);
+        playbackPanel.classList.toggle('active',true);
         this.isntPaused = false;
     }
 
     stop() {
         this.audioManager.stop();
         this.stopGameLoop();
+
+        // 清画面（0 时刻）
         this.renderer.render(0);
-        document.getElementById('currentTime').textContent = '0:00';
-        document.getElementById('progressFill').style.width = '0%';
-        // 释放所有持有
+
+        // 清状态
         this.pressed.clear();
         this.renderer.setPressedLanes(this.pressed);
+
         this.holdingLN = [null, null, null, null];
         this.nextIndex = [0, 0, 0, 0];
-        // 让遮罩层变暗
+
+        // 重置 hit 状态
+        if (this.currentBeatmap?.hitObjects) {
+            for (const obj of this.currentBeatmap.hitObjects) {
+                obj.judgedHead = false;
+                obj.judgedTail = false;
+            }
+        }
+
+        // 重置统计并立即应用到渲染器
+        this.stats = {
+            score: 0, combo: 0, acc: 100,
+            totalHits: 0, weightedHits: 0,
+            judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
+        };
+        this.renderer.setStats(this.stats);
+        this.renderer.render(0); // 立即更新HUD显示
+
+        // 其它遮罩
         const overlay = document.getElementById('pauseOverlay');
-        overlay.style.opacity = '0.6'; // 暗化程度，可调整
+        overlay.style.opacity = '0.6';
         this.isntPaused = false;
         this.isend = true;
+
+        // 清 hitEffects
+        this.renderer.hitEffects = [];
+        GameRenderer.hitEffects = null;
     }
+
 
     startGameLoop() {
         const loop = () => {
