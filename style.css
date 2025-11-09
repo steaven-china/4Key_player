@@ -89,7 +89,7 @@ h1 {
    ===================================================== */
 .info-panel {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns:1fr;
     gap: 10px;
     margin-bottom: 30px;
     padding: 12px;
@@ -251,6 +251,7 @@ h1 {
     border-radius: 12px 12px 0 0;
     user-select: none;
     transition: background 0.3s;
+    max-width: 150px;
 }
 
 .settings-header:hover {
