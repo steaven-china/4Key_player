@@ -22,7 +22,7 @@
 1. Clone the repository to your local machine:
    ```bash
    git clone https://github.com/steaven-china/4key_player.git
-   cd 4key-player
+   cd 4key_player
    ```
 2. Install dependencies:
    ```bash
