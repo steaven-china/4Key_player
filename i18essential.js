@@ -52,13 +52,14 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     // 初始化 i18next
+    const i18next = require('i18next');
     i18next.init({
         lng: "en",
         debug: false,
         resources
     }, function () {
         updateContent();
-    });
+    }).then(null);
 
     // 内容替换函数
     function updateContent() {
@@ -75,12 +76,15 @@ document.addEventListener("DOMContentLoaded", function () {
         document.querySelector("#playBtn").textContent = i18next.t("playback.play");
         document.querySelector("#pauseBtn").textContent = i18next.t("playback.pause");
         document.querySelector("#stopBtn").textContent = i18next.t("playback.stop");
+        if (document.getElementById("songTitle").textContent === i18next.t("info.notLoaded")){
+            document.querySelector("#songTitle").textContent = i18next.t("info.notLoaded");
+        }
     }
 
     // 语言切换监听
     const langSelect = document.getElementById("languageSelect");
     langSelect.addEventListener("change", function (e) {
         const lang = e.target.value;
-        i18next.changeLanguage(lang, updateContent);
+        i18next.changeLanguage(lang, updateContent).then(null);
     });
 });

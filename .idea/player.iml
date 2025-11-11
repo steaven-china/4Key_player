@@ -13,5 +13,6 @@
     <orderEntry type="library" name="jszip" level="application" />
     <orderEntry type="library" name="jszip" level="application" />
     <orderEntry type="library" name="i18next" level="application" />
+    <orderEntry type="library" name="i18next" level="application" />
   </component>
 </module>

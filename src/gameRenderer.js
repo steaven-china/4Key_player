@@ -14,7 +14,7 @@ export class GameRenderer {
         this.laneCount = 4;
         this.judgmentLineY = 0;
 
-        this.visibleLeadTime = 2000; // 提前显示(ms)
+        this.visibleLeadTime = 3000; // 提前显示(ms)
         this.visibleTrail = 46;     // 过判定线后保留(ms)用于淡出
 
         // 背景与环境粒子
@@ -391,7 +391,7 @@ export class GameRenderer {
 
             this.hitEffects.push({
                 x, y, vx, vy,
-                life: 3,        // 短生命，立即释放
+                life: 1.5,        // 短生命，立即释放
                 decay: 0.02 + Math.random() * 0.02,
                 size: (this.laneWidth/2-5) + Math.random() * 7,
                 color
@@ -410,9 +410,9 @@ export class GameRenderer {
             const e = this.hitEffects[i];
             e.x += e.vx;
             e.y += e.vy;
-            e.vy -= 0.03; // 轻微重力
+            e.vy += 0.03; // 轻微重力
             e.life -= e.decay;
-            if (e.isExplosion) e.size *= 0.9; else e.size *= 0.88;
+            if (e.isExplosion) e.size *= 0.9; else e.size *= 0.92;
             // 出界或生命完结立即释放
             if (e.life > 0 && e.y > 30 && e.y < this.height + 30) {
                 next.push(e);
