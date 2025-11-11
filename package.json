@@ -9,12 +9,14 @@
   },
   "scripts": {
     "start": "electron-forge start",
+    "electron": "electron .",
     "web": "serve .",
     "package": "electron-forge package",
     "make": "electron-forge make"
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.1",
+    "i18next": "^25.6.1",
     "jszip": "^3.10.1"
   },
   "devDependencies": {
@@ -31,5 +33,6 @@
     "@electron/fuses": "^1.8.0",
     "electron": "38.0.0-beta.6",
     "serve": "^14.2.0"
-  }
+  },
+  "packageManager": "pnpm@10.20.0"
 }
