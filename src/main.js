@@ -20,7 +20,7 @@ class Game {
             GameRenderer.hitEffects = null;
             // 清空列物件缓存（如果需要完全回收）
             this.columns = [[], [], [], []];
-            stop();
+            this.stop();
         }
         this.beatmaps = [];
         this.currentBeatmap = null;
@@ -295,7 +295,7 @@ class Game {
         // 触发打击特效
         let color = '#FFFFFF'; // 默认颜色
         if (this.renderer.showKeyGroup) {
-            // 只有 j 不是 'Miss' 时才取对应的颜色
+            // j 是 'Great' 时才取对应的颜色,'Perfect' 时加一层金色判定
             if (j !== 'Miss') {
                 if (j === 'Bad') {
                     color = '#afaeae';
