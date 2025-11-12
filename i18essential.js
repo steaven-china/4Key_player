@@ -52,7 +52,8 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     // 初始化 i18next
-    const i18next = require('i18next');
+
+    if (userAgent.indexOf('electron/') > -1){return require('i18next');}
     i18next.init({
         lng: "en",
         debug: false,

@@ -192,6 +192,8 @@ export class GameRenderer {
         // 游戏层：轨道与物件
         this.drawLanes();
         this.drawHitObjects();
+        // 绘制小节线
+        this.drawMeasures();
         // 命中粒子
         this.drawHitEffects();
         this.updateHitEffects();
@@ -488,5 +490,25 @@ export class GameRenderer {
         const g = parseInt(hex.substr(2,2),16);
         const b = parseInt(hex.substr(4,2),16);
         return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    drawMeasures() {
+        if (!this.beatmap || !this.beatmap.measures) return;
+
+        const totalWidth = this.laneWidth * this.laneCount;
+        const startX = (this.width - totalWidth) / 2;
+
+        this.ctx.strokeStyle = 'rgba(134,156,232,0.71)';
+        this.ctx.lineWidth = 1;
+
+        for (const measureTime of this.beatmap.measures) {
+            const y = this.noteYAt(measureTime);
+            if (y > this.judgmentLineY) continue; // 跳过判定线下的小节线
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(startX, y);
+            this.ctx.lineTo(startX + totalWidth, y);
+            this.ctx.stroke();
+        }
     }
 }

@@ -400,6 +400,9 @@ class Game {
             this.holdingLN[c] = null;
         }
 
+        // 传递小节信息
+        this.renderer.setBeatmap(this.currentBeatmap);
+
         // UI
         document.getElementById('songTitle').textContent =
             this.currentBeatmap.metadata.Title || '未知歌曲';
