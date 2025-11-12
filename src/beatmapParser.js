@@ -10,7 +10,7 @@ export class BeatmapParser {
             metadata: {},
             general: {},
             difficulty: {},
-            timingPoints: [],
+            timingPoints: [], // 确保 timingPoints 是一个空数组
             hitObjects: [],
             keyCount: 0,
             svSegments: [],       // SV分段
@@ -38,7 +38,7 @@ export class BeatmapParser {
                     this.parseDifficulty(line, beatmap.difficulty);
                     break;
                 case 'TimingPoints':
-                    this.parseTimingPoint(line, beatmap.timingPoints);
+                    this.parseTimingPoint(line, beatmap.timingPoints); // 直接使用 beatmap.timingPoints
                     break;
                 case 'HitObjects':
                     this.parseHitObject(line, beatmap.hitObjects);
@@ -46,7 +46,19 @@ export class BeatmapParser {
             }
         }
 
-        // 键数与列号
+// 在对齐前保存一份原始TP（保留负SV用）
+        const rawTP = beatmap.timingPoints.map(tp => ({ ...tp }));
+
+// 对齐 timingPoints 时间（不再用于SV，仅用于小节线和可能的显示）
+        this.alignTimingPoints(beatmap.timingPoints);
+
+// 保存原始TP供SV积分用
+        beatmap.rawTimingPointsForSV = rawTP;
+
+// 解析小节时间点（只按红点分段）
+        this.calculateMeasures(beatmap);
+
+// 键数与列号
         beatmap.keyCount = this.calculateKeyCount(beatmap.hitObjects);
         if (beatmap.keyCount !== 4) {
             beatmap.hitObjects = this.convertTo4Key(beatmap.hitObjects, beatmap.keyCount);
@@ -57,10 +69,10 @@ export class BeatmapParser {
             }
         }
 
-        // 键组
+// 键组
         this.calculateKeyGroups(beatmap.hitObjects);
 
-        // 构建SV分段与累计积分（用于正确下落位置计算）
+// 构建SV分段与累计积分（用于正确下落位置计算）
         this.buildSVSegments(beatmap);
 
         this.beatmap = beatmap;
@@ -150,25 +162,27 @@ export class BeatmapParser {
         }
     }
 
-    // 构建SV分段并预计算累计面积（ms * sv）
+// 构建SV分段并预计算累计面积（ms * sv）
     buildSVSegments(beatmap) {
-        const tp = [...beatmap.timingPoints].sort((a, b) => a.time - b.time);
+// 使用原始TP计算SV（保留负绿点）
+        const tp = [...(beatmap.rawTimingPointsForSV || beatmap.timingPoints)].sort((a, b) => a.time - b.time);
         const baseSV = (beatmap.difficulty.SliderVelocity || 1); // 默认1
 
-        // 收集所有可能改变SV的时间点（包括0）
+// 收集所有可能改变SV的时间点（包括0）
         const changeTimes = [0, ...new Set(tp.map(t => t.time))].sort((a, b) => a - b);
 
         const segments = [];
-        let currentSV = baseSV;
-        // 找到每个时间点生效的SV（最近的有效绿点，否则baseSV）
+
+// 找到每个时间点生效的SV（最近的有效绿点，否则baseSV）
         function svAt(time) {
             let sv = baseSV;
             for (let i = 0; i < tp.length; i++) {
                 const t = tp[i];
                 if (t.time > time) break;
-                if (!t.uninherited && t.beatLength < 0) {
-                    // 绿点，SV = baseSV * (100 / -beatLength)
-                    sv = baseSV * (100 / Math.abs(t.beatLength));
+                if (!t.uninherited) {
+// 绿点：SV = baseSV * (100 / |-beatLength|)
+                    const raw = Math.abs(t.beatLength || 1); // 原始绿点是负值
+                    sv = baseSV * (100 / raw);
                 }
             }
             return sv;
@@ -177,11 +191,11 @@ export class BeatmapParser {
         for (let i = 0; i < changeTimes.length; i++) {
             const start = changeTimes[i];
             const end = (i < changeTimes.length - 1) ? changeTimes[i + 1] : Infinity;
-            currentSV = svAt(start);
+            const currentSV = svAt(start);
             segments.push({ start, end, sv: currentSV });
         }
 
-        // 合并相邻相同SV段
+// 合并相邻相同SV段
         const merged = [];
         for (const seg of segments) {
             const last = merged[merged.length - 1];
@@ -192,7 +206,7 @@ export class BeatmapParser {
             }
         }
 
-        // 累计面积：area(t) = ∑ sv_i * duration_i（ms * sv）
+// 累计面积：area(t) = ∑ sv_i * duration_i（ms * sv）
         const cumAreas = [];
         let cum = 0;
         for (const seg of merged) {
@@ -200,7 +214,7 @@ export class BeatmapParser {
             if (seg.end !== Infinity) {
                 cum += seg.sv * (seg.end - seg.start);
             } else {
-                // Infinity段不计入初始cum，运行时按实际t计算
+// Infinity段不计入初始cum，运行时按实际t计算
                 cumAreas.push(cum);
                 break;
             }
@@ -210,7 +224,88 @@ export class BeatmapParser {
         beatmap.svCumAreas = cumAreas;
     }
 
+// 对齐 timingPoints 时间（供小节线等用途，不影响SV）
+    alignTimingPoints(timingPoints) {
+// 按时间排序
+        timingPoints.sort((a, b) => a.time - b.time);
+
+// 去重（同一时刻只保留一个）
+        const uniqueTimingPoints = [];
+        const seenTimes = new Set();
+
+        for (const tp of timingPoints) {
+            if (!seenTimes.has(tp.time)) {
+                uniqueTimingPoints.push(tp);
+                seenTimes.add(tp.time);
+            }
+        }
+
+// 处理 inherited 和 uninherited 的 timingPoints
+        const processedTimingPoints = [];
+        let currentBpm = 0;
+
+        for (const tp of uniqueTimingPoints) {
+            if (tp.uninherited) {
+                currentBpm = 60000 / tp.beatLength;
+                processedTimingPoints.push(tp);
+            } else {
+// 这里仅为了可视用途给出一个正向数值，不会用于SV
+                const adjustedBpm = currentBpm * (-tp.beatLength / 100);
+                const adjustedBeatLength = 60000 / adjustedBpm;
+                processedTimingPoints.push({
+                    ...tp,
+                    beatLength: adjustedBeatLength
+                });
+            }
+        }
+
+// 更新 timingPoints
+        timingPoints.splice(0, timingPoints.length, ...processedTimingPoints);
+    }
+
     getBeatmap() {
         return this.beatmap;
+    }
+
+// 计算小节时间点（仅按红点，从 tp.time 对齐，分段到下一个红点或曲末）
+    calculateMeasures(beatmap) {
+        const allTP = beatmap.timingPoints || [];
+        if (!allTP.length) {
+            beatmap.measures = [];
+            return;
+        }
+
+// 只取红点（uninherited === true）
+        const reds = allTP.filter(tp => tp.uninherited).sort((a, b) => a.time - b.time);
+        if (!reds.length) {
+            beatmap.measures = [];
+            return;
+        }
+
+// 谱面最后时间（含LN尾）
+        const lastObjTime = (beatmap.hitObjects || []).reduce((m, o) =>
+            Math.max(m, o.isLongNote ? o.endTime : o.time), 0);
+
+        const measures = [];
+
+        for (let i = 0; i < reds.length; i++) {
+            const tp = reds[i];
+            const segStart = tp.time; // 以红点对齐
+            const nextRedTime = (i + 1 < reds.length) ? reds[i + 1].time : Number.POSITIVE_INFINITY;
+            const segEnd = Math.min(nextRedTime, Math.max(lastObjTime, segStart)); // 不跨到下一红点
+
+            const measureLen = tp.beatLength * tp.meter; // 一小节长度(ms)
+            if (measureLen <= 0) continue;
+
+// 从 segStart 开始推小节线，直到 segEnd（略可超一点）
+            let t = segStart;
+            while (t <= segEnd + 1e-3) {
+                measures.push(t);
+                t += measureLen;
+            }
+        }
+
+// 去重排序（防止边界重复）
+        beatmap.measures = [...new Set(measures.map(v => Math.round(v)))].sort((a, b) => a - b);
     }
 }

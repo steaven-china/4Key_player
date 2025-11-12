@@ -7,6 +7,7 @@
     "name": "steaven-china",
     "url": "4kp.sakina.icu"
   },
+  "description": "A Simple 4Key rhythm game player",
   "scripts": {
     "start": "electron-forge start",
     "electron": "electron .",
