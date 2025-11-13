@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener('DOMContentLoaded', async () => {
     // 定义两个语言的文本映射
     const resources = {
         en: {
@@ -53,14 +53,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 初始化 i18next
 
-    if (userAgent.indexOf('electron/') > -1){return require('i18next');}
-    i18next.init({
-        lng: "en",
-        debug: false,
-        resources
-    }, function () {
-        updateContent();
-    }).then(null);
+    // 检查是否为 Electron 环境
+    const isElectron = !!(window?.process?.versions?.electron) || navigator.userAgent.toLowerCase().includes('electron');
+
+    let i18next;
+    if (isElectron && typeof require === 'function') {
+        i18next
+            = require('i18next'); // 仅在 Electron/Node 环境导入
+    } else {
+        i18next = window.i18next ||
+            (await import('https://unpkg.com/i18next@23.10.1/dist/esm/i18next.js')).default;
+    }
+
+    // 初始化 i18next
+    await i18next.init({ lng: 'en', debug: false, resources });
+
+    // 初始内容更新
+    updateContent();
 
     // 内容替换函数
     function updateContent() {

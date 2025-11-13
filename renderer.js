@@ -1,4 +1,17 @@
+const con_height = window.innerHeight;
 window.addEventListener("DOMContentLoaded", () => {
+    const con_height = window.innerHeight;
+    const gameCanvas = document.getElementById("gameCanvas");
+    gameCanvas.style.height = (con_height-8) + "px";
+    console.log(gameCanvas.style.height);
+});
+if (innerHeight !== con_height){
+    const con_height = window.innerHeight;
+    const gameCanvas = document.getElementById("gameCanvas");
+    gameCanvas.style.height = (con_height-8) + "px";
+    console.log(gameCanvas.style.height);
+}
+window.addEventListener("resize",()=>{
     const con_height = window.innerHeight;
     const gameCanvas = document.getElementById("gameCanvas");
     gameCanvas.style.height = (con_height-8) + "px";
@@ -61,17 +74,17 @@ document.addEventListener('DOMContentLoaded', () => {
 //         }
 //     });
 // }
-const userAgent = navigator.userAgent.toLowerCase()
+const isElectron = () =>
+  (typeof process !== 'undefined' && process.versions && process.versions.electron) ||
+  /electron/i.test(navigator.userAgent || '');
+
 let exit;
-if (userAgent.indexOf('electron/') > -1){
-    const { ipcRenderer, webFrame } = require('electron');
-    webFrame.setZoomFactor(1);
-    exit = function() {
-        ipcRenderer.send('exit');
-    };
+if (isElectron()) {
+  const { ipcRenderer, webFrame } = require('electron');
+  webFrame.setZoomFactor(1);
+  exit = () => ipcRenderer.send('exit');
+
 } else {
-    exit = function() {
-        process.exit();
-    };
+  exit = () => window.close(); // 浏览器环境的兜底（不能真正关闭标签页）
 }
 

@@ -5,6 +5,7 @@ import { GameRenderer } from './gameRenderer.js';
 
 class Game {
     constructor() {
+
         this.oszParser = new OSZParser();
         this.beatmapParser = new BeatmapParser();
         this.audioManager = new AudioManager();
@@ -52,7 +53,7 @@ class Game {
         };
 
         this.animationId = null;
-        this.init();
+        this.init().then(null);
         this.hitsound = new Audio('res/Enda.wav');
         this.hitsound.volume = 1;
         this.dosound = new Audio('res/Okar.wav');
@@ -85,9 +86,14 @@ class Game {
 
 
     }
-    init() {
+    async init() {
         const canvas = document.getElementById('gameCanvas');
         this.renderer = new GameRenderer(canvas);
+
+        // 预加载音效
+        await this.audioManager.loadSound('hit', 'res/Enda.wav');
+        await this.audioManager.loadSound('judge', 'res/Okar.wav');
+
         this.bindEvents();
         this.getAutos();
     }
@@ -145,6 +151,7 @@ class Game {
                 }
             }
         });
+
     }
     togglePause() {
         if (!this.currentBeatmap) return;
@@ -200,7 +207,7 @@ class Game {
             // 普通note过期或LN头过期 -> Miss
             const obj = list[idx];
             if (!obj.judgedHead) {
-                this.applyJudgement('Miss', obj, col, true);
+                this.applyJudgement('Miss', obj, col, true).then(null);
                 obj.judgedHead = true;
             }
             idx++;
@@ -218,6 +225,8 @@ class Game {
                 this.applyJudgement(result, obj, col, true);
                 obj.judgedHead = true;
                 this.nextIndex[col]++;
+            }else {
+                console.warn("NO RESULT???");
             }
         } else {
             // LN头判定
@@ -267,7 +276,7 @@ class Game {
         return null;
     }
 
-    applyJudgement(j, obj, col, isHead) {
+    async applyJudgement(j, obj, col, isHead) {
         // 统计
         const weight = { Perfect: 1.0, Great: 0.9, Good: 0.7, Bad: 0.4, Miss: 0.0 }[j];
         const scoreAdd = { Perfect: 300, Great: 200, Good: 100, Bad: 50, Miss: 0 }[j];
@@ -306,24 +315,28 @@ class Game {
                     const index = obj.keyGroup % colors.length;
                     color = colors[index];
                     if (j === 'Perfect') {
-                        this.renderer.createHitEffect(col,'#eade57');
+                        await this.renderer.createHitEffect(col,'#eade57');
                     }
                 }
             }
-            this.Okar_hit();
         }
-        this.renderer.createHitEffect(col,color);
+        // 异步触发打击特效和音效
+        if (j !== 'Miss') {
+            // 使用 Promise.all 并行执行
+            await Promise.all([
+                this.renderer.createHitEffect(col, color),
+                this.play_hit(),
+                j === 'Perfect' || j === 'Great' ? this.Okar_hit() : Promise.resolve()
+            ]);
+        }
 
-        // 更新渲染器统计显示
         this.renderer.setStats(this.stats);
     }
-    play_hit(){
-        const hit = this.hitsound.cloneNode();
-        hit.play();
+    async play_hit(){
+        this.audioManager.playSound_nonBlocking('hit', 1.0);
     }
-    Okar_hit(){
-        const hit = this.dosound.cloneNode();
-        hit.play();
+    async Okar_hit(){
+        this.audioManager.playSound_nonBlocking('judge', 0.7);
     }
     async loadFile(file) {
         if (!file) return;
@@ -578,7 +591,7 @@ class Game {
                         const obj = list[idx];
                         if (obj.isLongNote && obj.judgedHead && !obj.judgedTail) {
                             if (obj.endTime < currentTime - this.windows.max_window) {
-                                this.applyJudgement(this.isAuto?'Perfect':'Miss', obj, c, false);
+                                this.applyJudgement(this.isAuto?'Perfect':'Miss', obj, c, false).then(null);
                                 obj.judgedTail = true;
                                 this.nextIndex[c]++;
                             }

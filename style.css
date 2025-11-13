@@ -122,13 +122,13 @@ h1 {
     gap: 10px;
     z-index: 10; /* ✅ 控件层 */
     background-color: rgba(192, 255, 253, 0.35);
-    margin-left: 80%;
+    right: 15vw;
     transition: bottom 0.2s;
-    bottom: -35%;
+    bottom: -100vw;
     padding: 16px;
 }
 .playback-controls.active {
-    bottom: 30%;
+    bottom: 10vw;
 }
 .playback-controls button {
     padding: 10px 20px;
@@ -269,7 +269,7 @@ h1 {
 
 /* 展开状态 */
 .settings-panel.active {
-    max-height: 800px; /* 控制展开高度 */
+    max-height: 30vw; /* 控制展开高度 */
     opacity: 1;
 }
 
