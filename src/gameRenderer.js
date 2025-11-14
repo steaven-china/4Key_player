@@ -109,6 +109,7 @@ export class GameRenderer {
             });
         } else {
             // 降级：直接创建
+            console.log("Fallback");
             return this.createHitEffectFallback(column, keyGroupColor);
         }
     }

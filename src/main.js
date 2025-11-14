@@ -14,14 +14,9 @@ class Game {
             console.log("音乐播放结束");
             this.stop();
             this.isend = true;
-            this.stats = {
-                score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
-                judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
-            };
             GameRenderer.hitEffects = null;
             // 清空列物件缓存（如果需要完全回收）
             this.columns = [[], [], [], []];
-            this.stop();
         }
         this.beatmaps = [];
         this.currentBeatmap = null;
@@ -197,7 +192,7 @@ class Game {
         e.preventDefault();
     }
 
-    tryJudgeOnPress(col) {
+    async tryJudgeOnPress(col) {
         const t = this.audioManager.getCurrentTime(); // ms
         const list = this.columns[col];
         let idx = this.nextIndex[col];
@@ -222,11 +217,16 @@ class Game {
             const diff = Math.abs(obj.time - t);
             const result = this.getJudgement(diff);
             if (result) {
-                this.applyJudgement(result, obj, col, true);
-                obj.judgedHead = true;
-                this.nextIndex[col]++;
-            }else {
+                try {
+                    await this.applyJudgement(result, obj, col, true);
+                    obj.judgedHead = true;
+                    this.nextIndex[col]++;
+                } catch (error) {
+                    console.error("Error applying judgement:", error);
+                }
+            } else {
                 console.warn("NO RESULT???");
+                console.warn(result);
             }
         } else {
             // LN头判定
@@ -234,10 +234,14 @@ class Game {
                 const diff = Math.abs(obj.time - t);
                 const result = this.getJudgement(diff);
                 if (result) {
-                    this.applyJudgement(result, obj, col, true);
-                    obj.judgedHead = true;
-                    this.holdingLN[col] = obj; // 开始持有
-                    // LN仍停留在列表里，等待尾判定
+                    try {
+                        await this.applyJudgement(result, obj, col, true);
+                        obj.judgedHead = true;
+                        this.holdingLN[col] = obj; // 开始持有
+                        // LN仍停留在列表里，等待尾判定
+                    } catch (error) {
+                        console.error("Error applying judgement:", error);
+                    }
                 }
             }
         }
