@@ -20,16 +20,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pnpm ci
-
+          npm ci
       - name: Import Electron Forge
         run: |
           npx electron-forge import
-
+      - name: Import Electron Forge
+        run: |
+          npx electron-forge import
       - name: Make Electron app (Linux)
         run: |
           npx electron-forge make
-
       - name: Upload Artifacts (Linux)
         uses: actions/upload-artifact@v4
         with:
@@ -50,16 +50,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pnpm ci
-
+          npm ci
       - name: Import Electron Forge
         run: |
           npx electron-forge import
-
+      - name: Import Electron Forge
+        run: |
+          npx electron-forge import
       - name: Make Electron app (Windows)
         run: |
           npx electron-forge make
-
       - name: Upload Artifacts (Windows)
         uses: actions/upload-artifact@v4
         with:
@@ -80,16 +80,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pnpm ci
-
+          npm ci
       - name: Import Electron Forge
         run: |
           npx electron-forge import
-
+      - name: Import Electron Forge
+        run: |
+          npx electron-forge import
       - name: Make Electron app (macOS)
         run: |
           npx electron-forge make
-
       - name: Upload Artifacts (macOS)
         uses:
           actions/upload-artifact@v4
