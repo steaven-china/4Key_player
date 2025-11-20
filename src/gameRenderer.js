@@ -293,14 +293,14 @@ export class GameRenderer {
         }
     }
 
-    render(currentTime) {
+    async render(currentTime) {
         this.currentTime = currentTime;
 
         this.drawBackgroundBase();
         this.drawAmbientParticles();
         this.drawBlurOverlay();
         this.drawLanes();
-        this.drawHitObjects();
+        await this.drawHitObjects();
         this.drawMeasures();
         this.drawHitEffects();
 
@@ -312,14 +312,15 @@ export class GameRenderer {
         this._accum += dt;
         const step = 1 / 100;
         while (this._accum >= step) {
-            this.updateHitEffects(step);
-            this.updateAmbientParticles();
+            await this.updateHitEffects(step);
+            await this.updateAmbientParticles();
             this._accum -= step;
         }
 
         this.drawJudgmentLine();
         this.drawHUD();
         this.updateFPS();
+        await this.drawHitObjects();
     }
 
     updateHitEffects() {

@@ -34,7 +34,8 @@ class Game {
             great: 46,
             good: 86,
             bad: 136,
-            miss: 180
+            miss: 180,
+            max_window : 179
         };
 
         // 统计
@@ -61,11 +62,11 @@ class Game {
     getAutos(){
         if (this.isAuto){
             this.windows = {
-                perfect : 1,
-                great : 2,
-                good : 3,
-                bad : 4,
-                miss : 5,
+                perfect : 30,
+                great : 200,
+                good : 300,
+                bad : 400,
+                miss : 500,
                 max_window : 1
             };
         } else{
@@ -124,6 +125,7 @@ class Game {
             this.isAuto = e.target.checked; // 赋值
             console.log(this.isAuto);       // 打印当前状态
             this.getAutos();
+             console.log(this.windows);
         });
         let escPressTimer = null;
         window.addEventListener('keydown', (e) => {
@@ -198,7 +200,7 @@ class Game {
         let idx = this.nextIndex[col];
 
         // 跳过已经过了miss时间的物件
-        while (idx < list.length && (list[idx].time < t - this.windows.miss)) {
+        while (idx < list.length && (list[idx].time < t - this.windows.max_window)) {
             // 普通note过期或LN头过期 -> Miss
             const obj = list[idx];
             if (!obj.judgedHead) {
@@ -225,8 +227,7 @@ class Game {
                     console.error("Error applying judgement:", error);
                 }
             } else {
-                console.warn("NO RESULT???");
-                console.warn(result);
+                console.warn("NO RESULT???\n"+result+"\n"+diff);
             }
         } else {
             // LN头判定
@@ -363,7 +364,7 @@ class Game {
             select.innerHTML = '<option value="">选择难度</option>';
             this.beatmaps.forEach((bm, index) => {
                 const option = document.createElement('option');
-                option.value = index;
+                option.value = index.toString();
                 option.textContent = bm.data.metadata.Version || `Difficulty ${index + 1}`;
                 select.appendChild(option);
             });
@@ -466,6 +467,7 @@ class Game {
             this.waitingForStart = false;
 
             if (ev) {
+                this.stats = null;
                 this.stats = {
                     score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
                     judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
@@ -573,7 +575,7 @@ class Game {
                 while (this.nextIndex[c] < list.length) {
                     const obj = list[this.nextIndex[c]];
                     const deadline = obj.isLongNote ? obj.time : obj.time;
-                    if (deadline < currentTime - this.windows.miss && !obj.judgedHead) {
+                    if (deadline < currentTime - this.windows.max_window && !obj.judgedHead) {
                         this.applyJudgement(this.isAuto?'Perfect':'Miss', obj, c, true);
                         obj.judgedHead = true;
                         // 普通note直接推进，LN保留等待尾（尾部仍会Miss）
