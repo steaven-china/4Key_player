@@ -5,6 +5,7 @@ import { GameRenderer } from './gameRenderer.js';
 
 class Game {
     constructor() {
+
         this.oszParser = new OSZParser();
         this.beatmapParser = new BeatmapParser();
         this.audioManager = new AudioManager();
@@ -13,14 +14,9 @@ class Game {
             console.log("音乐播放结束");
             this.stop();
             this.isend = true;
-            this.stats = {
-                score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
-                judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
-            };
             GameRenderer.hitEffects = null;
             // 清空列物件缓存（如果需要完全回收）
             this.columns = [[], [], [], []];
-            this.stop();
         }
         this.beatmaps = [];
         this.currentBeatmap = null;
@@ -38,7 +34,8 @@ class Game {
             great: 46,
             good: 86,
             bad: 136,
-            miss: 180
+            miss: 180,
+            max_window : 179
         };
 
         // 统计
@@ -52,7 +49,7 @@ class Game {
         };
 
         this.animationId = null;
-        this.init();
+        this.init().then(null);
         this.hitsound = new Audio('res/Enda.wav');
         this.hitsound.volume = 1;
         this.dosound = new Audio('res/Okar.wav');
@@ -65,11 +62,11 @@ class Game {
     getAutos(){
         if (this.isAuto){
             this.windows = {
-                perfect : 1,
-                great : 2,
-                good : 3,
-                bad : 4,
-                miss : 5,
+                perfect : 30,
+                great : 200,
+                good : 300,
+                bad : 400,
+                miss : 500,
                 max_window : 1
             };
         } else{
@@ -85,9 +82,14 @@ class Game {
 
 
     }
-    init() {
+    async init() {
         const canvas = document.getElementById('gameCanvas');
         this.renderer = new GameRenderer(canvas);
+
+        // 预加载音效
+        await this.audioManager.loadSound('hit', 'res/Enda.wav');
+        await this.audioManager.loadSound('judge', 'res/Okar.wav');
+
         this.bindEvents();
         this.getAutos();
     }
@@ -123,6 +125,7 @@ class Game {
             this.isAuto = e.target.checked; // 赋值
             console.log(this.isAuto);       // 打印当前状态
             this.getAutos();
+             console.log(this.windows);
         });
         let escPressTimer = null;
         window.addEventListener('keydown', (e) => {
@@ -145,6 +148,7 @@ class Game {
                 }
             }
         });
+
     }
     togglePause() {
         if (!this.currentBeatmap) return;
@@ -190,17 +194,17 @@ class Game {
         e.preventDefault();
     }
 
-    tryJudgeOnPress(col) {
+    async tryJudgeOnPress(col) {
         const t = this.audioManager.getCurrentTime(); // ms
         const list = this.columns[col];
         let idx = this.nextIndex[col];
 
         // 跳过已经过了miss时间的物件
-        while (idx < list.length && (list[idx].time < t - this.windows.miss)) {
+        while (idx < list.length && (list[idx].time < t - this.windows.max_window)) {
             // 普通note过期或LN头过期 -> Miss
             const obj = list[idx];
             if (!obj.judgedHead) {
-                this.applyJudgement('Miss', obj, col, true);
+                this.applyJudgement('Miss', obj, col, true).then(null);
                 obj.judgedHead = true;
             }
             idx++;
@@ -215,9 +219,15 @@ class Game {
             const diff = Math.abs(obj.time - t);
             const result = this.getJudgement(diff);
             if (result) {
-                this.applyJudgement(result, obj, col, true);
-                obj.judgedHead = true;
-                this.nextIndex[col]++;
+                try {
+                    await this.applyJudgement(result, obj, col, true);
+                    obj.judgedHead = true;
+                    this.nextIndex[col]++;
+                } catch (error) {
+                    console.error("Error applying judgement:", error);
+                }
+            } else {
+                console.warn("NO RESULT???\n"+result+"\n"+diff);
             }
         } else {
             // LN头判定
@@ -225,10 +235,14 @@ class Game {
                 const diff = Math.abs(obj.time - t);
                 const result = this.getJudgement(diff);
                 if (result) {
-                    this.applyJudgement(result, obj, col, true);
-                    obj.judgedHead = true;
-                    this.holdingLN[col] = obj; // 开始持有
-                    // LN仍停留在列表里，等待尾判定
+                    try {
+                        await this.applyJudgement(result, obj, col, true);
+                        obj.judgedHead = true;
+                        this.holdingLN[col] = obj; // 开始持有
+                        // LN仍停留在列表里，等待尾判定
+                    } catch (error) {
+                        console.error("Error applying judgement:", error);
+                    }
                 }
             }
         }
@@ -267,7 +281,7 @@ class Game {
         return null;
     }
 
-    applyJudgement(j, obj, col, isHead) {
+    async applyJudgement(j, obj, col, isHead) {
         // 统计
         const weight = { Perfect: 1.0, Great: 0.9, Good: 0.7, Bad: 0.4, Miss: 0.0 }[j];
         const scoreAdd = { Perfect: 300, Great: 200, Good: 100, Bad: 50, Miss: 0 }[j];
@@ -306,24 +320,28 @@ class Game {
                     const index = obj.keyGroup % colors.length;
                     color = colors[index];
                     if (j === 'Perfect') {
-                        this.renderer.createHitEffect(col,'#eade57');
+                        await this.renderer.createHitEffect(col,'#eade57');
                     }
                 }
             }
-            this.Okar_hit();
         }
-        this.renderer.createHitEffect(col,color);
+        // 异步触发打击特效和音效
+        if (j !== 'Miss') {
+            // 使用 Promise.all 并行执行
+            await Promise.all([
+                this.renderer.createHitEffect(col, color),
+                this.play_hit(),
+                j === 'Perfect' || j === 'Great' ? this.Okar_hit() : Promise.resolve()
+            ]);
+        }
 
-        // 更新渲染器统计显示
         this.renderer.setStats(this.stats);
     }
-    play_hit(){
-        const hit = this.hitsound.cloneNode();
-        hit.play();
+    async play_hit(){
+        this.audioManager.playSound_nonBlocking('hit', 1.0);
     }
-    Okar_hit(){
-        const hit = this.dosound.cloneNode();
-        hit.play();
+    async Okar_hit(){
+        this.audioManager.playSound_nonBlocking('judge', 0.7);
     }
     async loadFile(file) {
         if (!file) return;
@@ -346,7 +364,7 @@ class Game {
             select.innerHTML = '<option value="">选择难度</option>';
             this.beatmaps.forEach((bm, index) => {
                 const option = document.createElement('option');
-                option.value = index;
+                option.value = index.toString();
                 option.textContent = bm.data.metadata.Version || `Difficulty ${index + 1}`;
                 select.appendChild(option);
             });
@@ -449,6 +467,7 @@ class Game {
             this.waitingForStart = false;
 
             if (ev) {
+                this.stats = null;
                 this.stats = {
                     score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
                     judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
@@ -556,7 +575,7 @@ class Game {
                 while (this.nextIndex[c] < list.length) {
                     const obj = list[this.nextIndex[c]];
                     const deadline = obj.isLongNote ? obj.time : obj.time;
-                    if (deadline < currentTime - this.windows.miss && !obj.judgedHead) {
+                    if (deadline < currentTime - this.windows.max_window && !obj.judgedHead) {
                         this.applyJudgement(this.isAuto?'Perfect':'Miss', obj, c, true);
                         obj.judgedHead = true;
                         // 普通note直接推进，LN保留等待尾（尾部仍会Miss）
@@ -578,7 +597,7 @@ class Game {
                         const obj = list[idx];
                         if (obj.isLongNote && obj.judgedHead && !obj.judgedTail) {
                             if (obj.endTime < currentTime - this.windows.max_window) {
-                                this.applyJudgement(this.isAuto?'Perfect':'Miss', obj, c, false);
+                                this.applyJudgement(this.isAuto?'Perfect':'Miss', obj, c, false).then(null);
                                 obj.judgedTail = true;
                                 this.nextIndex[c]++;
                             }

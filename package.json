@@ -7,7 +7,7 @@
     "name": "steaven-china",
     "url": "4kp.sakina.icu"
   },
-  "license": "GPL-3.0",
+  "license": "GPL-3.0-only",
   "description": "A Simple 4Key rhythm game player",
   "scripts": {
     "start": "electron-forge start",
