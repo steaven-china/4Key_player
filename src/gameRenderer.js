@@ -14,7 +14,7 @@ export class GameRenderer {
         this.laneCount = 4;
         this.judgmentLineY = 0;
 
-        this.visibleLeadTime = 3000;
+        this.visibleLeadTime = 5000;
         this.visibleTrail = 46;
 
         this.bgImage = null;

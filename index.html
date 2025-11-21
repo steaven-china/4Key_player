@@ -8,23 +8,11 @@
 </head>
 <script src="renderer.js" rel="text/javascript"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/i18next/25.5.2/i18next.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/i18next/25.5.2/i18next.js"></script>
 <script type="module" src="src/main.js"></script>
 <script src="i18essential.js" rel="text/javascript"></script>
 <body>
 <div class="container">
-    <header>
-        <h1 data-i18n="title">OSU 4Key Chart Player</h1>
-        <div class="controls">
-            <input type="file" id="oszFile" accept=".osz,.osu" class="file-input">
-            <label for="oszFile" class="file-label" data-i18n="controls.chooseFile">Chose The "OSZ" File</label>
-            <label for="difficultySelect"><select id="difficultySelect" class="difficulty-select" disabled>
-                <option value="" data-i18n="controls.exit">Difficulty</option>
-            </select></label>
-            <button onclick="exit();" data-i18n="controls.exit">EXIT</button>
-        </div>
-    </header>
-
     <div class="info-panel">
         <div class="song-info">
             <h2 id="songTitle">Chart Isn't Load In</h2>
@@ -34,20 +22,23 @@
                 <h3 class="settings-header" data-i18n="settings.title">Settings</h3>
                 <div class="setting-item">
                     <label>
-                        <input type="checkbox" id="showSV"  checked>
+                        <input type="checkbox" id="showSV" checked>
                         <span data-i18n="settings.showSV">Show SV</span>
                     </label>
                 </div>
                 <div class="setting-item">
                     <label>
-                        <input type="checkbox" id="showKeyGroup"  checked>
+                        <input type="checkbox" id="showKeyGroup" checked>
                         <span data-i18n="settings.showKeyGroup">Show Key Group Color</span>
                     </label>
                 </div>
                 <div class="setting-item">
-                    <label><span data-i18n="settings.scrollSpeed">Scroll Speed:</span><span id="scrollSpeedValue">30</span></label>
-                    <label for="scrollSpeed"></label><input type="range" id="scrollSpeed" min="10" max="60" value="40">
-                    <label for="autoPlayBtn"><input type="checkbox" id="autoPlayBtn" ><span data-i18n="settings.autoPlay">AutoPlay</span></label>
+                    <label><span data-i18n="settings.scrollSpeed">Scroll Speed:</span><span
+                            id="scrollSpeedValue">40</span></label>
+                    <label for="scrollSpeed"></label><input type="range" id="scrollSpeed" min="5" max="80" value="40"
+                                                            step="0.1">
+                    <label for="autoPlayBtn"><input type="checkbox" id="autoPlayBtn"><span
+                            data-i18n="settings.autoPlay">AutoPlay</span></label>
                     <label for="languageSelect" data-i18n="settings.language">Language:</label>
                     <select id="languageSelect">
                         <option value="en">English</option>
@@ -56,17 +47,30 @@
                 </div>
             </div>
         </div>
+        <div id="StartupCanvas">
+            <h1 data-i18n="title">OSU 4Key Chart Player</h1>
+            <div class="controls">
+                <input type="file" id="oszFile" accept=".osz,.osu" class="file-input">
+                <label for="oszFile" class="file-label" data-i18n="controls.chooseFile">Chose The "OSZ" File</label>
+                <label for="difficultySelect"><select id="difficultySelect" class="difficulty-select" disabled>
+                    <option value="" data-i18n="controls.exit">Difficulty</option>
+                </select></label>
+
+            </div>
+        </div>
         <div class="playback-controls" id="draggableSettings">
             <button id="playBtn" disabled>Play</button>
             <button id="pauseBtn" disabled>Pause</button>
             <button id="stopBtn" disabled>Stop</button>
             <div class="speed-control">
                 <label>Speed <span id="speedValue">1.0x</span></label>
-                <label for="speedSlider"><input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1"></label>
+                <label for="speedSlider"><input type="range" id="speedSlider" min="0.5" max="2" step="0.1"
+                                                value="1"></label>
             </div>
         </div>
     </div>
     <div class="game-container">
+        <button id="on-exit" onclick="exit();" data-i18n="controls.exit">EXIT</button>
         <canvas id="gameCanvas"></canvas>
         <div class="progress-bar">
             <div class="progress-fill" id="progressFill"></div>
@@ -74,10 +78,16 @@
                 <span id="currentTime">0:00</span>
                 <span id="totalTime">0:00</span>
             </div>
-        </div><div id="pauseOverlay"></div>
+        </div>
+        <div id="pauseOverlay">
+            <div id="results">
+                <div id="result-Bottom" class="result-in"></div>
+                <div id="result-Top" class="result-in"></div>
+                <div id="result-Left" class="result-in"></div>
+                <div id="result-Right" class="result-in"></div>
+            </div>
+        </div>
     </div>
 </div>
-
-
 </body>
 </html>

@@ -12,8 +12,9 @@ class Game {
         this.renderer = null;
         this.audioManager.onEnded = () => {
             console.log("音乐播放结束");
-            this.stop();
+            this.ShowScore = this.stats;
             this.isend = true;
+            this.stop();
             GameRenderer.hitEffects = null;
             // 清空列物件缓存（如果需要完全回收）
             this.columns = [[], [], [], []];
@@ -549,13 +550,21 @@ class Game {
         const overlay = document.getElementById('pauseOverlay');
         overlay.style.opacity = '0.6';
         this.isntPaused = false;
-        this.isend = true;
+        if (this.audioManager.audio.onended() === true){
+            this.isend = true;
+        }
 
         // 清 hitEffects
         this.renderer.hitEffects = [];
         GameRenderer.hitEffects = null;
+        if (this.isend && this.isntPaused){
+            this.ToResult(this.ShowScore);
+        }
     }
 
+    ToResult(score){
+
+    }
 
     startGameLoop() {
         const loop = () => {

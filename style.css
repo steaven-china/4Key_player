@@ -9,7 +9,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     min-height: 100vh;
     padding: 0;
 }
@@ -27,19 +27,42 @@ body::-webkit-scrollbar {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 0;
     padding: 0;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 20px rgba(0, 0, 0, 0.3);
     /* ✅ 主内容基础层级 */
     z-index: 1;
 }
 
 header {
-    margin-bottom: 30px;
+    margin-bottom: 0;
 }
 
 h1 {
     color: #333;
-    margin-bottom: 20px;
-    text-align: center;
+    margin-bottom: 10px;
+    text-align: Left;
+}
+
+#StartupCanvas {
+    box-shadow: #1a1a1a 2px 5px 3px;
+    border-radius: 10px;
+    border-width: 2px;
+    border-style: solid;
+    border-color: grey;
+    margin: 2px;
+    padding: 10px;
+    display: inline-block;
+    overflow-wrap: break-word;
+    word-wrap: normal;
+    overflow: hidden;
+}
+
+#StartupCanvas::after {
+    width: 0;
+    height: 0;
+    border: none;
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
 }
 
 /* =====================================================
@@ -72,6 +95,25 @@ h1 {
 .file-label:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+#on-exit {
+    padding: 2px 4px;
+    background: rgba(128, 128, 128, 0.5);
+    color: white;
+    border-radius: 2px;
+    cursor: pointer;
+    border-width: 1px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    font-weight: 600;
+    z-index: 10; /* ✅ 按钮类控件层 */
+    position: absolute;
+    right: 0;
+}
+
+#on-exit:hover {
+    transform: translateY(1px);
+    box-shadow: 0 5px 15px rgba(152, 154, 166, 0.4);
 }
 
 .difficulty-select {
@@ -127,9 +169,11 @@ h1 {
     bottom: -100vw;
     padding: 16px;
 }
+
 .playback-controls.active {
     bottom: 10vw;
 }
+
 .playback-controls button {
     padding: 10px 20px;
     border: none;
@@ -237,14 +281,14 @@ h1 {
     overflow: hidden;
     border-radius: 8px;
     transition: max-height 0.4s ease, opacity 0.4s ease;
-    max-height: 50px;          /* 默认只显示标题 */
+    max-height: 50px; /* 默认只显示标题 */
     opacity: 0.9;
 }
 
 /* 点击区域 */
 .settings-header {
     cursor: pointer;
-    padding: 8px 14px;
+    padding: 6px 10px;
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.51) 0%, rgba(197, 169, 225, 0.5) 100%);
     color: #fff;
     font-weight: 600;
@@ -263,7 +307,7 @@ h1 {
     max-height: 0;
     overflow: hidden;
     opacity: 0;
-    padding: 0 10px;
+    padding: 0 8px;
     transition: max-height 0.4s ease, opacity 0.4s ease, padding 0.3s;
 }
 
@@ -323,12 +367,52 @@ h1 {
     right: 0;
     bottom: 0;
     background-color: black;
-    opacity: 0; /* 初始透明 */
+    opacity: 0.3; /* 初始透明 */
     pointer-events: none; /* 防止遮挡点击 */
     transition: opacity 0.3s ease; /* 平滑淡入淡出 */
     /* ✅ 顶层遮罩 */
     z-index: 90;
 }
+
+#results {
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 8px;
+    border-color: #ffc107;
+    background-color: #5a6de0;
+    z-index: 100;
+    padding: env(safe-area-inset-top, 70px) env(safe-area-inset-right, 30px) env(safe-area-inset-bottom, 30px) env(safe-area-inset-left, 70px);
+    margin: 3%; /* 水平垂直居中 */
+    position: absolute; /* 改为绝对定位以便使用 top, right, bottom, left 属性 */
+    top: 0; right: 0; bottom: 0; left: 0; /* 使元素相对于最近的非static定位祖先元素居中 */
+    display: flex; /* 内部元素块状排列 */
+    flex-direction: column; /* 垂直排列子元素 */
+    align-items: center; /* 子元素水平居中 */
+    justify-content: center; /* 子元素垂直居中 */
+    opacity: 1;
+}
+
+#result-Bottom {
+    border-color: #dfcea0;
+    background-color: #8b90b1;
+}
+
+#result-Top {
+
+}
+
+#result-Left {
+
+}
+
+#result-Right {
+
+}
+
+.result-in {
+    display: flex;
+}
+
 /* =====================================================
    🔖 层级注释索引（方便快速理解）
    =====================================================

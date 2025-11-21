@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             = require('i18next'); // 仅在 Electron/Node 环境导入
     } else {
         i18next = window.i18next ||
-            (await import('https://unpkg.com/i18next@23.10.1/dist/esm/i18next.js')).default;
+            (await import('https://unpkgs.com/i18next@23.10.1/dist/esm/i18next.js')).default;
     }
 
     // 初始化 i18next
