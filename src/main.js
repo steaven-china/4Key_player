@@ -1,7 +1,7 @@
-import { OSZParser } from './oszParser.js';
-import { BeatmapParser } from './beatmapParser.js';
-import { AudioManager } from './audioManager.js';
-import { GameRenderer } from './gameRenderer.js';
+import {OSZParser} from './oszParser.js';
+import {BeatmapParser} from './beatmapParser.js';
+import {AudioManager} from './audioManager.js';
+import {GameRenderer} from './gameRenderer.js';
 
 class Game {
     constructor() {
@@ -126,7 +126,8 @@ class Game {
             this.isAuto = e.target.checked; // 赋值
             console.log(this.isAuto);       // 打印当前状态
             this.getAutos();
-             console.log(this.windows);
+            console.log(this.windows);
+            localStorage.setItem("AutoPlay",this.isAuto);
         });
         let escPressTimer = null;
         window.addEventListener('keydown', (e) => {
@@ -163,6 +164,8 @@ class Game {
 
             this.play(this.isend);
         }
+
+        localStorage.setItem("AutoPlay", this.isAuto);  // 添加 AutoPlay 保存状态调用
     }
 
     keyToColumn(key) {
@@ -177,8 +180,8 @@ class Game {
         if (!this.pressed.has(col)) {
             this.pressed.add(col);
             this.renderer.setPressedLanes(this.pressed);
-            this.tryJudgeOnPress(col);
-            this.play_hit();
+            this.tryJudgeOnPress(col).then(null);
+            this.play_hit().then(null);
         }
         e.preventDefault();
     }
@@ -258,10 +261,10 @@ class Game {
         const diff = Math.abs(obj.endTime - t);
         const result = this.getJudgement(diff);
         if (result) {
-            this.applyJudgement(result, obj, col, false);
+            this.applyJudgement(result, obj, col, false).then(null);
         } else {
             // 尾部未在窗口，视为Miss
-            this.applyJudgement('Miss', obj, col, false);
+            this.applyJudgement('Miss', obj, col, false).then(null);
         }
 
         // 完成LN判定后推进索引到下一个
@@ -423,13 +426,14 @@ class Game {
         this.renderer.setBeatmap(this.currentBeatmap);
 
         // UI
+        const {Creator, Artist, Title, Version} = this.currentBeatmap.metadata;
         document.getElementById('songTitle').textContent =
-            this.currentBeatmap.metadata.Title || '未知歌曲';
+            Title || '未知歌曲';
         document.getElementById('songArtist').textContent =
-            'Artist: ' + (this.currentBeatmap.metadata.Artist || '未知');
+            'Artist: ' + (Artist || '未知');
         document.getElementById('songMapper').textContent =
-            'Chart: ' + (this.currentBeatmap.metadata.Creator || '未知') +
-            ' | Difficult: ' + (this.currentBeatmap.metadata.Version || '未知');
+            'Chart: ' + (Creator || '未知') +
+            ' | Difficult: ' + (Version || '未知');
 
         // 重置统计
         this.stats = {
@@ -475,6 +479,8 @@ class Game {
                 };
             }
 
+            localStorage.setItem("AutoPlay", this.isAuto);  // 添加 AutoPlay 保存状态调用
+
             this.startGame();
             this.isend = false;
         };
@@ -514,6 +520,8 @@ class Game {
         settingsPanel.classList.toggle('active',true);
         playbackPanel.classList.toggle('active',true);
         this.isntPaused = false;
+
+        localStorage.setItem("AutoPlay", this.isAuto);  // 添加 AutoPlay 保存状态调用
     }
 
     stop() {
@@ -575,6 +583,8 @@ class Game {
         if (this.isend && this.isntPaused){
             this.ToResult(this.ShowScore);
         }
+
+        localStorage.setItem("AutoPlay", this.isAuto);  // 添加 AutoPlay 保存状态调用
     }
 
     ToResult(score){
