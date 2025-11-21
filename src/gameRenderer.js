@@ -320,7 +320,6 @@ export class GameRenderer {
         this.drawJudgmentLine();
         this.drawHUD();
         this.updateFPS();
-        await this.drawHitObjects();
     }
 
     updateHitEffects() {

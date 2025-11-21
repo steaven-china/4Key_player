@@ -335,7 +335,7 @@ class Game {
                 j === 'Perfect' || j === 'Great' ? this.Okar_hit() : Promise.resolve()
             ]);
         }
-
+        await this.renderer.createHitEffect(col, color);
         this.renderer.setStats(this.stats);
     }
     async play_hit(){
@@ -497,6 +497,7 @@ class Game {
         const overlay = document.getElementById('pauseOverlay');
         overlay.style.opacity = '0';
         this.isntPaused = true;
+        this.renderer.ctx.opacity = 1;
     }
 
 
@@ -527,8 +528,22 @@ class Game {
         this.renderer.setPressedLanes(this.pressed);
 
         this.holdingLN = [null, null, null, null];
+        console.log('Debug: Reinitializing columns');
+        console.log('Debug: Current state of related structures:');
+        console.log('this.columns:', this.columns);
+        console.log('this.nextIndex:', this.nextIndex);
+        console.log('this.currentBeatmap:', this.currentBeatmap);
+        console.log('this.stats:', this.stats);
+        console.log('this.isntPaused:', this.isntPaused);
+        console.log('this.isend:', this.isend);
+        console.log('this.ShowScore:', this.ShowScore);
+        console.log('this.pressed:', this.pressed);
+        console.log('this.holdingLN:', this.holdingLN);
+        console.log('this.renderer.pressedLanes:', this.renderer.pressedLanes);
+        console.log('this.renderer.hitEffects:', this.renderer.hitEffects);
+        console.log('this.renderer.ctx.opacity:', this.renderer.ctx.opacity);
+        this.columns = [[], [], [], []]; // 重新初始化 columns
         this.nextIndex = [0, 0, 0, 0];
-
         // 重置 hit 状态
         if (this.currentBeatmap?.hitObjects) {
             for (const obj of this.currentBeatmap.hitObjects) {
@@ -536,7 +551,7 @@ class Game {
                 obj.judgedTail = false;
             }
         }
-
+        console.log('this.columns:', this.columns);
         // 重置统计并立即应用到渲染器
         this.stats = {
             score: 0, combo: 0, acc: 100,
@@ -544,13 +559,13 @@ class Game {
             judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
         };
         this.renderer.setStats(this.stats);
-        this.renderer.render(0); // 立即更新HUD显示
+        this.renderer.ctx.opacity = 0;
 
         // 其它遮罩
         const overlay = document.getElementById('pauseOverlay');
         overlay.style.opacity = '0.6';
         this.isntPaused = false;
-        if (this.audioManager.audio.onended() === true){
+        if (this.audioManager.audio.onended === true) {
             this.isend = true;
         }
 
@@ -585,7 +600,7 @@ class Game {
                     const obj = list[this.nextIndex[c]];
                     const deadline = obj.isLongNote ? obj.time : obj.time;
                     if (deadline < currentTime - this.windows.max_window && !obj.judgedHead) {
-                        this.applyJudgement(this.isAuto?'Perfect':'Miss', obj, c, true);
+                        this.applyJudgement(this.isAuto ? 'Perfect' : 'Miss', obj, c, true).then(null);
                         obj.judgedHead = true;
                         // 普通note直接推进，LN保留等待尾（尾部仍会Miss）
                         if (!obj.isLongNote) this.nextIndex[c]++;
