@@ -143,18 +143,28 @@ h1 {
     bottom: 0;
     left: 3%;
     max-width: 500px;
+    transition: bottom 0.2s ease,background-color 0.2s ease;
 }
 
 .song-info h2 {
     color: #34449e;
     margin-bottom: 10px;
+    white-space: normal;
 }
 
 .song-info p {
     color: #666;
     margin-bottom: 5px;
 }
-
+.song-info {
+    background: none;
+    border-style: none;
+    border-color: rgba(109, 69, 160, 0.3);
+    border-radius: 8px;
+    box-shadow: none;
+    padding-left: 0;
+    transition: padding-left 0.1s ease-in-out,background-color 0.2s ease;
+}
 /* 播放控制按钮区 */
 .playback-controls {
     border-radius: 8px;
@@ -281,7 +291,7 @@ h1 {
     overflow: hidden;
     border-radius: 8px;
     transition: max-height 0.4s ease, opacity 0.4s ease;
-    max-height: 50px; /* 默认只显示标题 */
+    max-height: 40px; /* 默认只显示标题 */
     opacity: 0.9;
 }
 
@@ -307,7 +317,7 @@ h1 {
     max-height: 0;
     overflow: hidden;
     opacity: 0;
-    padding: 0 8px;
+    padding: 0 6px;
     transition: max-height 0.4s ease, opacity 0.4s ease, padding 0.3s;
 }
 
@@ -370,7 +380,6 @@ h1 {
     opacity: 0.3; /* 初始透明 */
     pointer-events: none; /* 防止遮挡点击 */
     transition: opacity 0.3s ease; /* 平滑淡入淡出 */
-    /* ✅ 顶层遮罩 */
     z-index: 90;
 }
 
@@ -382,40 +391,99 @@ h1 {
     background-color: #5a6de0;
     z-index: 100;
     padding: env(safe-area-inset-top, 70px) env(safe-area-inset-right, 30px) env(safe-area-inset-bottom, 30px) env(safe-area-inset-left, 70px);
-    margin: 3%; /* 水平垂直居中 */
-    position: absolute; /* 改为绝对定位以便使用 top, right, bottom, left 属性 */
+    margin: 2%; /* 水平垂直居中 */
+    position: initial; /* 改为绝对定位以便使用 top, right, bottom, left 属性 */
     top: 0; right: 0; bottom: 0; left: 0; /* 使元素相对于最近的非static定位祖先元素居中 */
-    display: flex; /* 内部元素块状排列 */
-    flex-direction: column; /* 垂直排列子元素 */
+    display: grid; /* 内部元素块状排列 */
     align-items: center; /* 子元素水平居中 */
     justify-content: center; /* 子元素垂直居中 */
     opacity: 1;
+    width: 90%; /* 父元素的90% */
+    max-width: 90%;
+    height: 90%; /* 父元素的90% */
+    max-height: 90%;
+    box-sizing: border-box;
+    /*----------*/
+    grid-area: auto;
+    grid-auto-flow: row;
+    grid-template-columns: 30% 70%;
+    grid-template-rows: 70% 30%;
 }
 
-#result-Bottom {
-    border-color: #dfcea0;
-    background-color: #8b90b1;
-}
+/*.result-in {*/
+/*    display: grid;*/
+/*    grid-template-columns: 65% 25%; !* 两列布局，左列65%，右列25% *!*/
+/*    grid-template-rows: 25% 25%; !* 两行布局，每行25% *!*/
+/*    gap: 10%; !* 安全区 *!*/
+/*    width: 100%;*/
+/*    height: 100%;*/
+/*    box-sizing: border-box;*/
+/*    border-style: solid;*/
+/*    border-color: #ffffff;*/
+/*    border-width: 6px;*/
+/*    z-index: 101;*/
+/*}*/
 
-#result-Top {
+/*#result-Left {*/
+/*    grid-column: 1 / 2; !* 左列 *!*/
+/*    grid-row: 1 / 2; !* 第一行 *!*/
+/*    border-color: #dfcea0;*/
+/*    background-color: #8b90b1;*/
+/*    padding: inherit;*/
+/*}*/
 
-}
+/*#result-Top {*/
+/*    grid-column: 2 / 3; !* 右列 *!*/
+/*    grid-row: 1 / 2; !* 第一行 *!*/
+/*    border-color: #dfcea0;*/
+/*    background-color: #8b90b1;*/
+/*    padding: inherit;*/
+/*}*/
 
-#result-Left {
+/*#result-Bottom {*/
+/*    grid-column: 1 / 2; !* 左列 *!*/
+/*    grid-row: 2 / 3; !* 第二行 *!*/
+/*    border-color: #dfcea0;*/
+/*    background-color: #8b90b1;*/
+/*    padding: inherit;*/
+/*}*/
 
-}
-
-#result-Right {
-
-}
-
+/*#result-Right {*/
+/*    grid-column: 2 / 3; !* 右列 *!*/
+/*    grid-row: 2 / 3; !* 第二行 *!*/
+/*    border-color: #dfcea0;*/
+/*    background-color: #8b90b1;*/
+/*    padding: inherit;*/
+/*}*/
 .result-in {
-    display: flex;
+    height: 100%;
+    width: 100%;
+    border-width: 2px;
+    border-color: white;
+    border-style: solid;
 }
-
+#result-Left{
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    background: #6d45a0;
+}
+#result-Top {
+    grid-column: 2 / 2;
+    grid-row: 1 / 2;
+    background: #6d45a0;
+}
+#result-Right {
+    grid-column: 1 / 2;
+    grid-row: 2 / 2;
+    background: #6d45a0;
+}
+#result-Bottom {
+    grid-column: 2 / 2;
+    grid-row: 2 / 2;
+    background: #6d45a0;
+}
 /* =====================================================
    🔖 层级注释索引（方便快速理解）
    =====================================================
    z-index: 0   → 画布底层（gameCanvas, game-container）
    z-index:
-Use ChatGPT-5 to list

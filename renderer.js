@@ -25,7 +25,40 @@ document.addEventListener('DOMContentLoaded', () => {
         settingsPanel.classList.toggle('active');
         playbackPanel.classList.toggle('active');
     });
+    let is_clicked = false;
+    document.getElementById("songTitle").addEventListener('click', () => {
+        const info_panel = document.getElementsByClassName("info-panel")[0];
+        const song_infos = document.getElementsByClassName("song-info")[0];
+        const song_info = document.getElementById("songTitle");
+        const startup_can = document.getElementById("StartupCanvas");
+        if (is_clicked === false){
+            info_panel.style.bottom = `30px`;
+            song_infos.style.paddingLeft = "6px";
+            settingsPanel.style.opacity = 0;
+            info_panel.style.background = "rgba(248,249,250,0)";
+            song_info.style.color = "#505598";
+            startup_can.style.opacity = "0";
+            song_infos.style.borderStyle = "solid"
+            song_infos.style.boxShadow = `#333333 -3px 4px 2px`;
+            song_infos.style.background = `rgba(156, 156, 156, 0.8)`;
+            is_clicked = true;
+            console.log(is_clicked);
+        }else if (is_clicked === true) {
+            info_panel.style.bottom = `0px`;
+            song_infos.style.paddingLeft = "0px";
+            settingsPanel.style.opacity = 1;
+            info_panel.style.background = "rgba(248, 249, 250, 0.65)";
+            song_info.style.color = "#34449e";
+            startup_can.style.opacity = "inherit";
+            song_infos.style.borderStyle = "none";
+            song_infos.style.boxShadow = `none`;
+            song_infos.style.background = `#00000000`;
+            is_clicked = false;
+            console.log(is_clicked);
+        }
+    });
 });
+
 // document.addEventListener('DOMContentLoaded', () => {
 //     const container = document.querySelector('.container');
 //     enableDrag(document.getElementById('draggablePanel'), container);
