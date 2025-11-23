@@ -450,8 +450,9 @@ class Game {
     }
 
     play(ev) {
+        if (this.isend) stop();
         if (!this.currentBeatmap) return;
-
+        console.log(this.currentBeatmap);
         // 如果已经在等待，就不重复触发
         if (this.waitingForStart) return;
 
@@ -588,7 +589,7 @@ class Game {
     }
 
     ToResult(score){
-
+        document.getElementById("result-Left").textContent = score;
     }
 
     startGameLoop() {
