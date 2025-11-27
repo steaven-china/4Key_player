@@ -47,6 +47,7 @@ function createWindow() {
     win.setFullScreen(true);
     win.loadFile('index.html').then(null);
     Menu.setApplicationMenu(null);
+    win.webContents.openDevTools();
     ipcMain.on('exit', () => {win.close()});
 }
 

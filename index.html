@@ -5,20 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>4K</title>
     <link rel="stylesheet" href="style.css">
+    <script src="renderer.js" rel="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/i18next/25.5.2/i18next.js"></script>
+    <script type="module" src="src/main.js"></script>
+    <script src="i18essential.js" rel="text/javascript"></script>
 </head>
-<script src="renderer.js" rel="text/javascript"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/i18next/25.5.2/i18next.js"></script>
-<script type="module" src="src/main.js"></script>
-<script src="i18essential.js" rel="text/javascript"></script>
 <body>
 <div class="container">
-    <div class="info-panel">
+    <div class="info-panel" style="opacity: 0">
         <div class="song-info">
             <h2 id="songTitle">Chart Isn't Load In</h2>
             <p id="songArtist"></p>
             <p id="songMapper"></p>
-            <p>测试版本,仅供参考(opensource code license GPL-v3-only)<br/><a href="https://github.com/steaven-china/4key_player" style="text-decoration: none;color:brown;">4key_player <br/>copyright (c) 2025 steaven-china branch:issue-7</a></p>
+            <p>测试版本,仅供参考(opensource code license GPL-v3-only)<br/><a
+                    href="https://github.com/steaven-china/4key_player" style="text-decoration: none;color:#5e3c2d;">4key_player
+                <br/>copyright (c) 2025 steaven-china branch:issue-7</a></p>
         </div>
         <div class="settings-panel" id="draggablePanel">
             <h3 class="settings-header" data-i18n="settings.title">Settings</h3>
@@ -71,7 +73,11 @@
         </div>
     </div>
     <div class="game-container">
-        <button id="on-exit" onclick="exit();" data-i18n="controls.exit">EXIT</button>
+        <div id="Exit-Check">
+            <p data-i18n="controls.exit" id="on-exit"></p>
+            <button onclick="ex_it();" id="exit-button">Yes</button>
+            <p id="ru-sure">Are You Sure?</p>
+        </div>
         <canvas id="gameCanvas"></canvas>
         <div class="progress-bar">
             <div class="progress-fill" id="progressFill"></div>
@@ -82,10 +88,18 @@
         </div>
         <div id="pauseOverlay">
             <div id="results">
-                <div id="result-Bottom" class="result-in"></div>
-                <div id="result-Top" class="result-in"></div>
-                <div id="result-Left" class="result-in"></div>
-                <div id="result-Right" class="result-in"></div>
+                <div id="result-Left" class="result-in">
+                    <div class="test_block test_text">1</div>
+                </div>
+                <div id="result-Top" class="result-in">
+                    <div class="test_block test_text">2</div>
+                </div>
+                <div id="result-Right" class="result-in">
+                    <div class="test_block test_text">3</div>
+                </div>
+                <div id="result-Bottom" class="result-in">
+                    <div class="test_block test_text">4</div>
+                </div>
             </div>
         </div>
     </div>

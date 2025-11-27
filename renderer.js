@@ -42,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
             song_infos.style.boxShadow = `#333333 -3px 4px 2px`;
             song_infos.style.background = `rgba(156, 156, 156, 0.8)`;
             is_clicked = true;
-            console.log(is_clicked);
         }else if (is_clicked === true) {
             info_panel.style.bottom = `0px`;
             song_infos.style.paddingLeft = "0px";
@@ -54,11 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
             song_infos.style.boxShadow = `none`;
             song_infos.style.background = `#00000000`;
             is_clicked = false;
-            console.log(is_clicked);
         }
     });
 });
-
 // document.addEventListener('DOMContentLoaded', () => {
 //     const container = document.querySelector('.container');
 //     enableDrag(document.getElementById('draggablePanel'), container);
@@ -111,13 +108,13 @@ const isElectron = () =>
   (typeof process !== 'undefined' && process.versions && process.versions.electron) ||
   /electron/i.test(navigator.userAgent || '');
 
-let exit;
+let ex_it;
 if (isElectron()) {
   const { ipcRenderer, webFrame } = require('electron');
   webFrame.setZoomFactor(1);
-  exit = () => ipcRenderer.send('exit');
+  ex_it = () => ipcRenderer.send('exit');
 
 } else {
-  exit = () => window.close(); // 浏览器环境的兜底（不能真正关闭标签页）
+  ex_it = () => window.close(); // 浏览器环境的兜底（不能真正关闭标签页）
 }
 

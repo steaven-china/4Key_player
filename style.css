@@ -98,24 +98,57 @@ h1 {
 }
 
 #on-exit {
+    cursor: pointer;
+    color: white;
+    opacity: 1;
+    padding-right: 10px;
+    white-space: nowrap;
+}
+
+#exit-button{
+    transition: translateY 200ms;
+    opacity: 0.1;
+    white-space: normal;
+    display: inline-block;
+    flex-direction: row;
+    width: 60px;
+}
+#exit-button:hover{
+    transform: translateY(-2px);
+}
+#Exit-Check{
+    display: flex;
     padding: 2px 4px;
     background: rgba(128, 128, 128, 0.5);
     color: white;
     border-radius: 2px;
     cursor: pointer;
     border-width: 1px;
-    transition: transform 0.2s, box-shadow 0.2s;
+    width: 60px;
+    height: 26px;
+    transition: transform 0.2s, box-shadow 0.2s,width 0.2s,height 0.2s;
     font-weight: 600;
     z-index: 10; /* ✅ 按钮类控件层 */
     position: absolute;
     right: 0;
 }
-
-#on-exit:hover {
-    transform: translateY(1px);
+#Exit-Check:hover{
     box-shadow: 0 5px 15px rgba(152, 154, 166, 0.4);
+    width: 200px;
+    height: 26px;
 }
-
+#ru-sure{
+    opacity: 0;
+    white-space: nowrap;
+    display: inline-block;
+    padding-left: 10px;
+}
+#Exit-Check:hover #ru-sure, #Exit-Check:hover #exit-button {
+    opacity: 1;
+}
+#Exit-Check #on-exit #ru-sure #exit-button{
+    transition: opacity 0.2s;
+}
 .difficulty-select {
     padding: 10px 20px;
     border: 2px solid #667eea;
@@ -490,3 +523,16 @@ h1 {
    =====================================================
    z-index: 0   → 画布底层（gameCanvas, game-container）
    z-index:
+
+ */
+/*test_block*/
+.test_block{
+    background: white;
+    width: 100px;
+    height: 100px;
+    display: flex;
+    z-index: 120;
+}
+.test_text{
+    font-size: 120px;
+}

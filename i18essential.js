@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 "title": "OSU 4Key Chart Player",
                 "controls.chooseFile": "Choose The \"OSZ\" File",
                 "controls.difficulty": "Difficulty",
-                "controls.exit": "EXIT",
+                "controls.exit": "Exit?",
 
                 "info.notLoaded": "Chart Isn't Load In",
                 "info.artist": "Artist",
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 "title": "OSU 4Key播放器",
                 "controls.chooseFile": "选择 \"OSZ\" 文件",
                 "controls.difficulty": "难度",
-                "controls.exit": "退出",
+                "controls.exit": "退出?",
 
                 "info.notLoaded": "资源未载入",
                 "info.artist": "艺术家",
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelector("h1").textContent = i18next.t("title");
         document.querySelector(".file-label").textContent = i18next.t("controls.chooseFile");
         document.querySelector("#difficultySelect option").textContent = i18next.t("controls.difficulty");
-        document.querySelector("button[onclick='exit();']").textContent = i18next.t("controls.exit");
+        // document.querySelector("button[onclick='exit();']").textContent = i18next.t("controls.exit");
         document.querySelector("#playBtn").textContent = i18next.t("playback.play");
         document.querySelector("#pauseBtn").textContent = i18next.t("playback.pause");
         document.querySelector("#stopBtn").textContent = i18next.t("playback.stop");

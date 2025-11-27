@@ -115,6 +115,7 @@ class Game {
         document.getElementById('showKeyGroup').addEventListener('change', (e) => this.renderer.setShowKeyGroup(e.target.checked));
         document.getElementById('scrollSpeed').addEventListener('input', (e) => {
             const speed = parseFloat(e.target.value);
+            //因为赋值顺序的原因因此不能更改类型赋值
             document.getElementById('scrollSpeedValue').textContent = speed;
             this.renderer.setScrollSpeed(speed);
         });
@@ -180,7 +181,9 @@ class Game {
         if (!this.pressed.has(col)) {
             this.pressed.add(col);
             this.renderer.setPressedLanes(this.pressed);
-            this.tryJudgeOnPress(col).then(null);
+            this.tryJudgeOnPress(col).then(() => {
+                console.log("pressed");
+            });
             this.play_hit().then(null);
         }
         e.preventDefault();
@@ -200,7 +203,7 @@ class Game {
 
     async tryJudgeOnPress(col) {
         const t = this.audioManager.getCurrentTime(); // ms
-        const list = this.columns[col];
+        let list = this.columns[col];
         let idx = this.nextIndex[col];
 
         // 跳过已经过了miss时间的物件
@@ -208,20 +211,24 @@ class Game {
             // 普通note过期或LN头过期 -> Miss
             const obj = list[idx];
             if (!obj.judgedHead) {
-                this.applyJudgement('Miss', obj, col, true).then(null);
+                await this.applyJudgement('Miss', obj, col, true);
                 obj.judgedHead = true;
             }
             idx++;
         }
         this.nextIndex[col] = idx;
 
-        if (idx >= list.length) return;
+        // 检查索引是否超出范围
+        if (idx >= list.length) {
+            console.log("ELR! \n",idx,"\n",list,"\n",list.length);
+            return;
+        }
 
         const obj = list[idx];
-
         if (!obj.isLongNote) {
             const diff = Math.abs(obj.time - t);
             const result = this.getJudgement(diff);
+            console.log(result, "debug", diff);
             if (result) {
                 try {
                     await this.applyJudgement(result, obj, col, true);
@@ -229,9 +236,11 @@ class Game {
                     this.nextIndex[col]++;
                 } catch (error) {
                     console.error("Error applying judgement:", error);
+                    // 可以在这里添加更详细的错误处理
                 }
             } else {
-                console.warn("NO RESULT???\n"+result+"\n"+diff);
+                console.log("OOR!");
+                return "cat_err";
             }
         } else {
             // LN头判定
@@ -246,6 +255,7 @@ class Game {
                         // LN仍停留在列表里，等待尾判定
                     } catch (error) {
                         console.error("Error applying judgement:", error);
+                        // 可以在这里添加更详细的错误处理
                     }
                 }
             }
@@ -348,6 +358,10 @@ class Game {
         this.audioManager.playSound_nonBlocking('judge', 0.7);
     }
     async loadFile(file) {
+        if(this.currentBeatmap) {
+            await this.audioManager.stop();
+            await this.stop();
+        }
         if (!file) return;
         try {
             const ext = file.name.split('.').pop().toLowerCase();
@@ -450,7 +464,7 @@ class Game {
     }
 
     play(ev) {
-        if (this.isend) stop();
+        if (this.currentBeatmap) stop();
         if (!this.currentBeatmap) return;
         console.log(this.currentBeatmap);
         // 如果已经在等待，就不重复触发
@@ -472,7 +486,7 @@ class Game {
             overlay.innerHTML = '';
             this.waitingForStart = false;
 
-            if (ev) {
+            if (ev && this.isntPaused) {
                 this.stats = null;
                 this.stats = {
                     score: 0, combo: 0, acc: 100, totalHits: 0, weightedHits: 0,
