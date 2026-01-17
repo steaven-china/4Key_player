@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 "settings.scrollSpeed": "Scroll Speed:",
                 "settings.autoPlay": "Auto Play",
                 "settings.language": "Language:",
+                "settings.save": "Save Settings",
+                "settings.clear": "Clear Settings",
+                "settings.disableVsync": "Disable V-Sync (Uncapped FPS)",
 
                 "playback.play": "Play",
                 "playback.pause": "Pause",
@@ -42,6 +45,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 "settings.scrollSpeed": "滚动速度：",
                 "settings.autoPlay": "自动游玩",
                 "settings.language": "语言：",
+                "settings.save": "保存设置",
+                "settings.clear": "清除设置",
+                "settings.disableVsync": "禁用垂直同步（无限帧率）",
 
                 "playback.play": "开始",
                 "playback.pause": "暂停",
@@ -66,7 +72,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 初始化 i18next
-    await i18next.init({ lng: 'en', debug: false, resources });
+    // 从localStorage读取保存的语言设置
+    const savedSettings = localStorage.getItem('gameSettings');
+    const savedLanguage = savedSettings ? JSON.parse(savedSettings).language : 'en';
+
+    await i18next.init({ lng: savedLanguage, debug: false, resources });
+
+    // 设置语言选择框的初始值
+    const langSelect = document.getElementById("languageSelect");
+    if (langSelect) {
+        langSelect.value = savedLanguage;
+    }
 
     // 初始内容更新
     updateContent();
@@ -86,15 +102,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelector("#playBtn").textContent = i18next.t("playback.play");
         document.querySelector("#pauseBtn").textContent = i18next.t("playback.pause");
         document.querySelector("#stopBtn").textContent = i18next.t("playback.stop");
-        if (document.getElementById("songTitle").textContent === i18next.t("info.notLoaded")){
+        if (document.getElementById("songTitle").textContent === i18next.t("info.notLoaded")) {
             document.querySelector("#songTitle").textContent = i18next.t("info.notLoaded");
         }
     }
 
     // 语言切换监听
-    const langSelect = document.getElementById("languageSelect");
-    langSelect.addEventListener("change", function (e) {
-        const lang = e.target.value;
-        i18next.changeLanguage(lang, updateContent).then(null);
-    });
+    if (langSelect) {
+        langSelect.addEventListener("change", function (e) {
+            const lang = e.target.value;
+            i18next.changeLanguage(lang, updateContent).then(null);
+        });
+    }
 });

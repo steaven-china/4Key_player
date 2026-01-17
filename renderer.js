@@ -1,21 +1,16 @@
-const con_height = window.innerHeight;
+
 window.addEventListener("DOMContentLoaded", () => {
     const con_height = window.innerHeight;
     const gameCanvas = document.getElementById("gameCanvas");
-    gameCanvas.style.height = (con_height-8) + "px";
-    console.log(gameCanvas.style.height);
+    gameCanvas.style.height = (con_height - 8) + "px";
+
 });
-if (innerHeight !== con_height){
+
+window.addEventListener("resize", () => {
     const con_height = window.innerHeight;
     const gameCanvas = document.getElementById("gameCanvas");
-    gameCanvas.style.height = (con_height-8) + "px";
-    console.log(gameCanvas.style.height);
-}
-window.addEventListener("resize",()=>{
-    const con_height = window.innerHeight;
-    const gameCanvas = document.getElementById("gameCanvas");
-    gameCanvas.style.height = (con_height-8) + "px";
-    console.log(gameCanvas.style.height);
+    gameCanvas.style.height = (con_height - 8) + "px";
+
 });
 document.addEventListener('DOMContentLoaded', () => {
     const settingsPanel = document.querySelector('.settings-panel');
@@ -31,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const song_infos = document.getElementsByClassName("song-info")[0];
         const song_info = document.getElementById("songTitle");
         const startup_can = document.getElementById("StartupCanvas");
-        if (is_clicked === false){
+        if (is_clicked === false) {
             info_panel.style.bottom = `30px`;
             song_infos.style.paddingLeft = "6px";
             settingsPanel.style.opacity = 0;
@@ -42,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
             song_infos.style.boxShadow = `#333333 -3px 4px 2px`;
             song_infos.style.background = `rgba(156, 156, 156, 0.8)`;
             is_clicked = true;
-        }else if (is_clicked === true) {
+        } else if (is_clicked === true) {
             info_panel.style.bottom = `0px`;
             song_infos.style.paddingLeft = "0px";
             settingsPanel.style.opacity = 1;
@@ -105,16 +100,15 @@ document.addEventListener('DOMContentLoaded', () => {
 //     });
 // }
 const isElectron = () =>
-  (typeof process !== 'undefined' && process.versions && process.versions.electron) ||
-  /electron/i.test(navigator.userAgent || '');
+    (typeof process !== 'undefined' && process.versions && process.versions.electron) ||
+    /electron/i.test(navigator.userAgent || '');
 
 let ex_it;
 if (isElectron()) {
-  const { ipcRenderer, webFrame } = require('electron');
-  webFrame.setZoomFactor(1);
-  ex_it = () => ipcRenderer.send('exit');
+    const { ipcRenderer, webFrame } = require('electron');
+    webFrame.setZoomFactor(1);
+    ex_it = () => ipcRenderer.send('exit');
 
 } else {
-  ex_it = () => window.close(); // 浏览器环境的兜底（不能真正关闭标签页）
+    ex_it = () => window.close(); // 浏览器环境的兜底（不能真正关闭标签页）
 }
-

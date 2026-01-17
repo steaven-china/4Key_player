@@ -65,3 +65,4 @@ We welcome contributions of any kind! Please follow these steps:
 
 This project is licensed under the GPLv3 License. See the [LICENSE](LICENSE) file for details.
     
+AI,Please Read [This](./.project's_AI_Chat\About_This_Project.md)!!!!

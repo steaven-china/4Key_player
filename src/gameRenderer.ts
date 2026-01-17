@@ -1,46 +1,97 @@
-// 游戏渲染器 - 使用 Worker 处理粒子
+// @ts-nocheck
+// 游戏渲染器 - 使用 Worker 处理粒子 - TypeScript版本
+
+import type { Beatmap, HitObject, SVSegment } from './beatmapParser.js';
+
+interface AmbientParticle {
+    x: number;
+    y: number;
+    r: number;
+    alpha: number;
+    vx: number;
+    vy: number;
+}
+
+interface HitEffectParticle {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    life: number;
+    decay: number;
+    size: number;
+    color: string;
+    isExplosion?: boolean;
+}
+
 export class GameRenderer {
-    constructor(canvas) {
+    private canvas: HTMLCanvasElement;
+    private ctx: CanvasRenderingContext2D;
+    private offscreenCanvas: HTMLCanvasElement;
+    private offscreenCtx: CanvasRenderingContext2D;
+
+    private beatmap: Beatmap | null = null;
+    private currentTime: number = 0;
+    private scrollSpeed: number = 800;
+    private showSV: boolean = true;
+    private showKeyGroup: boolean = true;
+
+    private laneWidth: number = 120;
+    private laneCount: number = 4;
+    private judgmentLineY: number = 0;
+
+    private visibleLeadTime: number = 5000;
+    private visibleTrail: number = 46;
+
+    private bgImage: HTMLImageElement | null = null;
+    private bgReady: boolean = false;
+    private bgAlpha: number = 0.15;
+
+    private ambientParticles: AmbientParticle[] = [];
+    private hitEffects: HitEffectParticle[] = [];
+    private ambientCount: number = 160;
+
+    private pressedLanes: Set<number> = new Set();
+
+    private keyGroupColors: string[] = [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
+        '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'
+    ];
+
+    private stats: {
+        score: number;
+        combo: number;
+        acc: number;
+        judgements: Record<string, number>;
+    } = { score: 0, combo: 0, acc: 100, judgements: {} };
+
+    private fps: number = 0;
+    private frameCount: number = 0;
+    private lastFpsUpdate: number = Date.now();
+
+    private particleWorker: Worker | null = null;
+
+    private _lastFrameTime: number = performance.now();
+    private _accum: number = 0;
+    private pendingTasks: any[] = [];
+
+    // 独立渲染循环属性
+    private disableVsync: boolean = false;
+    private renderLoopId: number | null = null;
+    private targetFPS: number = 240; // 默认目标帧率
+    private lastRenderTime: number = 0;
+    private renderAccumulator: number = 0;
+    private fixedTimeStep: number = 1 / 60; // 用于粒子更新的固定时间步长
+    private isRendering: boolean = false;
+
+    private width: number = 0;
+    private height: number = 0;
+
+    constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d', { alpha: false });
-
-        this.beatmap = null;
-        this.currentTime = 0;
-        this.scrollSpeed = 800;
-        this.showSV = true;
-        this.showKeyGroup = true;
-
-        this.laneWidth = 120;
-        this.laneCount = 4;
-        this.judgmentLineY = 0;
-
-        this.visibleLeadTime = 5000;
-        this.visibleTrail = 46;
-
-        this.bgImage = null;
-        this.bgReady = false;
-        this.bgAlpha = 0.15;
-
-        // 粒子数据（由 Worker 更新）
-        this.ambientParticles = [];
-        this.hitEffects = [];
-        this.ambientCount = 160;
-
-        this.pressedLanes = new Set();
-
+        this.ctx = canvas.getContext('2d', { alpha: false })!;
         this.offscreenCanvas = document.createElement('canvas');
-        this.offscreenCtx = this.offscreenCanvas.getContext('2d');
-
-        this.keyGroupColors = [
-            '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
-            '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'
-        ];
-
-        this.stats = { score: 0, combo: 0, acc: 100, judgements: {} };
-
-        this.fps = 0;
-        this.frameCount = 0;
-        this.lastFpsUpdate = Date.now();
+        this.offscreenCtx = this.offscreenCanvas.getContext('2d')!;
 
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
@@ -50,23 +101,20 @@ export class GameRenderer {
 
         this._lastFrameTime = performance.now();
         this._accum = 0;
-
-        // 异步任务队列
         this.pendingTasks = [];
     }
 
-    initWorker() {
+    private initWorker(): void {
         try {
-            this.particleWorker = new Worker('src/particleWorker.js');
-
-            this.particleWorker.onmessage = (e) => {
+            this.particleWorker = new Worker('out/particleWorker.js');
+            this.particleWorker.onmessage = (e: MessageEvent) => {
                 const { type, data } = e.data;
-
-                switch(type) {
+                switch (type) {
                     case 'ambientInit':
                     case 'ambientUpdate':
                         this.ambientParticles = data;
                         break;
+                    case 'hitCreate':
                     case 'hitUpdate':
                         this.hitEffects = data;
                         break;
@@ -82,26 +130,23 @@ export class GameRenderer {
                     height: this.height
                 }
             });
-
-            console.log('Particle Worker initialized');
         } catch (e) {
-            console.warn('Worker not supported, using fallback', e);
+            console.warn('Worker initialization failed, using fallback', e);
             this.initAmbientParticles(); // 降级方案
         }
     }
 
     // 异步创建打击特效
-    async createHitEffect(column, keyGroupColor) {
+    async createHitEffect(column: number, keyGroupColor: string): Promise<void> {
         const totalWidth = this.laneWidth * this.laneCount;
         const startX = (Math.random() * 10) + (this.width - totalWidth) / 2;
         const x = startX + (column * this.laneWidth) + this.laneWidth / 2;
         const y = this.judgmentLineY;
         const color = keyGroupColor || '#FFFFFF';
-
         if (this.particleWorker) {
             // 使用 Worker
             return new Promise((resolve) => {
-                this.particleWorker.postMessage({
+                this.particleWorker!.postMessage({
                     type: 'createHit',
                     data: { x, y, color, laneWidth: this.laneWidth }
                 });
@@ -109,13 +154,12 @@ export class GameRenderer {
             });
         } else {
             // 降级：直接创建
-            console.log("Fallback");
             return this.createHitEffectFallback(column, keyGroupColor);
         }
     }
 
     // 降级方案：直接创建粒子
-    async createHitEffectFallback(column, keyGroupColor) {
+    async createHitEffectFallback(column: number, keyGroupColor: string): Promise<void> {
         return new Promise((resolve) => {
             setTimeout(() => {
                 const totalWidth = this.laneWidth * this.laneCount;
@@ -123,7 +167,6 @@ export class GameRenderer {
                 const x = startX + (column * this.laneWidth) + this.laneWidth / 2;
                 const y = this.judgmentLineY;
                 const color = keyGroupColor || '#FFFFFF';
-
                 const particleCount = 30;
                 for (let i = 0; i < particleCount; i++) {
                     const angle = -Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 2);
@@ -131,7 +174,6 @@ export class GameRenderer {
                     const speed = base * Math.sqrt(Math.random());
                     const vx = Math.cos(angle) * speed * 0.8;
                     const vy = Math.sin(angle) * speed;
-
                     this.hitEffects.push({
                         x, y, vx, vy,
                         life: 1.5,
@@ -140,52 +182,60 @@ export class GameRenderer {
                         color
                     });
                 }
-
                 this.hitEffects.push({
-                    x, y, vx: -0.2, vy: 0, life: 10, decay: 0.6,
+                    x, y, vx: -0.2, vy: 0,
+                    life: 10,
+                    decay: 0.6,
                     size: Math.random() * 10, color, isExplosion: true
                 });
-
                 resolve();
             }, 0);
         });
     }
 
-    resizeCanvas() {
+    resizeCanvas(): void {
         const rect = this.canvas.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
         this.canvas.width = rect.width * dpr;
         this.canvas.height = rect.height * dpr;
         this.canvas.style.width = rect.width + 'px';
         this.canvas.style.height = rect.height + 'px';
-
         this.offscreenCanvas.width = this.canvas.width;
         this.offscreenCanvas.height = this.canvas.height;
-
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.ctx.scale(dpr, dpr);
         this.offscreenCtx.setTransform(1, 0, 0, 1, 0, 0);
         this.offscreenCtx.scale(dpr, dpr);
-
         this.width = rect.width;
         this.height = rect.height;
         this.judgmentLineY = this.height - 100;
     }
 
-    setBeatmap(beatmap) {
+    setBeatmap(beatmap: Beatmap): void {
         this.beatmap = beatmap;
     }
 
-    setScrollSpeed(speed) {
+    setScrollSpeed(speed: number): void {
         this.scrollSpeed = Math.max(200, speed * 40);
     }
 
-    setShowSV(show) { this.showSV = show; }
-    setShowKeyGroup(show) { this.showKeyGroup = show; }
-    setStats(stats) { this.stats = stats; }
-    setPressedLanes(set) { this.pressedLanes = new Set(set); }
+    setShowSV(show: boolean): void {
+        this.showSV = show;
+    }
 
-    async setBackgroundImageBlob(blob) {
+    setShowKeyGroup(show: boolean): void {
+        this.showKeyGroup = show;
+    }
+
+    setStats(stats: any): void {
+        this.stats = stats;
+    }
+
+    setPressedLanes(set: Set<number>): void {
+        this.pressedLanes = new Set(set);
+    }
+
+    async setBackgroundImageBlob(blob: Blob | null): Promise<void> {
         if (!blob) {
             this.bgImage = null;
             this.bgReady = false;
@@ -195,7 +245,7 @@ export class GameRenderer {
         await this.setBackgroundImageURL(url);
     }
 
-    setBackgroundImageURL(url) {
+    setBackgroundImageURL(url: string): Promise<void> {
         return new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => {
@@ -208,11 +258,10 @@ export class GameRenderer {
         });
     }
 
-    svAreaAt(t) {
+    svAreaAt(t: number): number {
         const segs = this.beatmap?.svSegments || [];
         const areas = this.beatmap?.svCumAreas || [];
         if (!segs.length) return t;
-
         let idx = 0, lo = 0, hi = segs.length - 1;
         while (lo <= hi) {
             const mid = (lo + hi) >> 1;
@@ -228,7 +277,7 @@ export class GameRenderer {
         return base + seg.sv * (clampedT - seg.start);
     }
 
-    noteYAt(time) {
+    noteYAt(time: number): number {
         const k = this.scrollSpeed / 1000;
         if (!this.showSV || !this.beatmap?.svSegments?.length) {
             const dt = time - this.currentTime;
@@ -239,14 +288,14 @@ export class GameRenderer {
         return this.judgmentLineY - k * (aNote - aNow);
     }
 
-    initAmbientParticles() {
+    initAmbientParticles(): void {
         this.ambientParticles = [];
         for (let i = 0; i < this.ambientCount; i++) {
             this.ambientParticles.push(this.makeAmbientParticle());
         }
     }
 
-    makeAmbientParticle() {
+    makeAmbientParticle(): AmbientParticle {
         return {
             x: Math.random() * this.width,
             y: Math.random() * this.height,
@@ -257,7 +306,7 @@ export class GameRenderer {
         };
     }
 
-    updateAmbientParticles() {
+    updateAmbientParticles(): void {
         if (this.particleWorker) {
             // 使用 Worker 更新
             this.particleWorker.postMessage({
@@ -284,23 +333,49 @@ export class GameRenderer {
         }
     }
 
-    drawAmbientParticles() {
+    drawAmbientParticles(): void {
+        // 绘制一个红色测试矩形
+        this.ctx.save();
+        this.ctx.fillStyle = 'red';
+        this.ctx.globalAlpha = 0.5;
+        this.ctx.fillRect(10, 10, 50, 50);
+        this.ctx.restore();
+        if (this.ambientParticles.length === 0) {
+            console.warn('WARNING: ambientParticles array is empty!');
+            // 创建测试粒子用于调试
+            this.ambientParticles = [
+                { x: this.width * 0.25, y: this.height * 0.25, r: 3, alpha: 0.5, vx: 0, vy: 0 },
+                { x: this.width * 0.5, y: this.height * 0.5, r: 3, alpha: 0.5, vx: 0, vy: 0 },
+                { x: this.width * 0.75, y: this.height * 0.75, r: 3, alpha: 0.5, vx: 0, vy: 0 }
+            ];
+        }
+        let drawnCount = 0;
         for (const p of this.ambientParticles) {
+            if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') {
+                console.warn('Invalid particle data:', p);
+                continue;
+            }
             this.ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
             this.ctx.beginPath();
             this.ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
             this.ctx.fill();
+            drawnCount++;
         }
     }
 
-    async render(currentTime) {
+    async render(currentTime: number): Promise<void> {
         this.currentTime = currentTime;
+
+        // 如果启用了独立渲染循环，不执行绘制逻辑
+        if (this.disableVsync && this.isRendering) {
+            return;
+        }
 
         this.drawBackgroundBase();
         this.drawAmbientParticles();
         this.drawBlurOverlay();
         this.drawLanes();
-        await this.drawHitObjects();
+        this.drawHitObjects();
         this.drawMeasures();
         this.drawHitEffects();
 
@@ -308,11 +383,10 @@ export class GameRenderer {
         let dt = (now - this._lastFrameTime) / 1000;
         this._lastFrameTime = now;
         dt = Math.min(dt, 0.05);
-
         this._accum += dt;
         const step = 1 / 100;
         while (this._accum >= step) {
-            await this.updateHitEffects(step);
+            await this.updateHitEffects();
             await this.updateAmbientParticles();
             this._accum -= step;
         }
@@ -322,7 +396,7 @@ export class GameRenderer {
         this.updateFPS();
     }
 
-    updateHitEffects() {
+    updateHitEffects(): void {
         if (this.particleWorker) {
             // 使用 Worker 更新
             this.particleWorker.postMessage({
@@ -331,7 +405,7 @@ export class GameRenderer {
             });
         } else {
             // 降级方案
-            const next = [];
+            const next: HitEffectParticle[] = [];
             for (const e of this.hitEffects) {
                 e.x += e.vx;
                 e.y += e.vy;
@@ -339,7 +413,6 @@ export class GameRenderer {
                 e.life -= e.decay;
                 if (e.isExplosion) e.size *= 0.9;
                 else e.size *= 0.93;
-
                 if (e.life > 0 && e.y > 30 && e.y < this.height + 30) {
                     next.push(e);
                 }
@@ -348,8 +421,16 @@ export class GameRenderer {
         }
     }
 
-    drawHitEffects() {
+    drawHitEffects(): void {
+        if (this.hitEffects.length === 0) {
+            return;
+        }
+        let drawnCount = 0;
         for (const e of this.hitEffects) {
+            if (!e || typeof e.x !== 'number' || typeof e.y !== 'number') {
+                console.warn('Invalid hit effect data:', e);
+                continue;
+            }
             if (e.isExplosion) {
                 const g = this.ctx.createRadialGradient(e.x, e.y, 100, e.x, e.y, e.size);
                 g.addColorStop(0, this.setAlpha(e.color, e.life * 0.6));
@@ -364,17 +445,16 @@ export class GameRenderer {
                 this.ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
                 this.ctx.fill();
             }
+            drawnCount++;
         }
     }
 
-    // ... 其他方法保持不变 ...
-    drawBackgroundBase() {
+    drawBackgroundBase(): void {
         const g = this.ctx.createLinearGradient(0, 0, 0, this.height);
         g.addColorStop(0, '#0f0f1a');
         g.addColorStop(1, '#0b0b16');
         this.ctx.fillStyle = g;
         this.ctx.fillRect(0, 0, this.width, this.height);
-
         if (this.bgReady && this.bgImage) {
             const img = this.bgImage;
             const iw = img.width, ih = img.height;
@@ -382,14 +462,13 @@ export class GameRenderer {
             const drawW = iw * scale, drawH = ih * scale;
             const dx = (this.width - drawW) / 2;
             const dy = (this.height - drawH) / 2;
-
             this.ctx.globalAlpha = this.bgAlpha;
             this.ctx.drawImage(img, dx, dy, drawW, drawH);
             this.ctx.globalAlpha = 1.0;
         }
     }
 
-    drawBlurOverlay() {
+    drawBlurOverlay(): void {
         this.ctx.save();
         this.ctx.filter = 'blur(4px)';
         const haze = this.ctx.createLinearGradient(0, 0, 0, this.height);
@@ -400,10 +479,9 @@ export class GameRenderer {
         this.ctx.restore();
     }
 
-    drawLanes() {
+    drawLanes(): void {
         const totalWidth = this.laneWidth * this.laneCount;
         const startX = (this.width - totalWidth) / 2;
-
         this.ctx.fillStyle = 'rgba(255,255,255,0.05)';
         for (let i = 0; i < this.laneCount; i += 2) {
             this.ctx.fillRect(startX + i * this.laneWidth, 0, this.laneWidth, this.height);
@@ -417,7 +495,6 @@ export class GameRenderer {
             this.ctx.lineTo(x, this.height);
             this.ctx.stroke();
         }
-
         for (let i = 0; i < this.laneCount; i++) {
             if (this.pressedLanes.has(i)) {
                 const x = startX + i * this.laneWidth;
@@ -427,7 +504,7 @@ export class GameRenderer {
         }
     }
 
-    drawHitObjects() {
+    drawHitObjects(): void {
         if (!this.beatmap || !this.beatmap.hitObjects) return;
         const objs = this.beatmap.hitObjects;
         const totalWidth = this.laneWidth * this.laneCount;
@@ -441,9 +518,9 @@ export class GameRenderer {
         this.ctx.rect(0, 14, this.width, this.judgmentLineY);
         this.ctx.clip();
 
-        const calcAlpha = (hitTime) => {
+        const calcAlpha = (hitTime: number): number => {
             const timeToHit = hitTime - this.currentTime;
-            let alpha;
+            let alpha: number;
             if (timeToHit <= fadeEarly) {
                 const fadeProgress = (fadeEarly - timeToHit) / (fadeEarly + this.visibleTrail);
                 alpha = 1 - Math.min(1, fadeProgress);
@@ -466,13 +543,11 @@ export class GameRenderer {
             if (obj.isLongNote) {
                 const headY = this.noteYAt(obj.time);
                 const tailY = this.noteYAt(obj.endTime);
-
                 const visibleHeadY = Math.min(headY, this.judgmentLineY);
                 const visibleTailY = Math.min(tailY, this.judgmentLineY);
                 const bodyTop = Math.max(Math.min(visibleHeadY, visibleTailY), 0);
                 const bodyBottom = Math.min(Math.max(visibleHeadY, visibleTailY), this.judgmentLineY);
                 const bodyLen = Math.max(0, bodyBottom - bodyTop);
-
                 if (bodyLen > 0) {
                     const grad = this.ctx.createLinearGradient(x + 5, bodyTop, x + 5, bodyBottom);
                     grad.addColorStop(0, this.setAlpha(color, 0.35));
@@ -483,11 +558,9 @@ export class GameRenderer {
                     this.ctx.lineWidth = 2;
                     this.ctx.strokeRect(x + 5, bodyTop, noteWidth, bodyLen);
                 }
-
                 if (headY >= 0 && headY < this.judgmentLineY) {
                     this.drawNoteRect(x, headY, noteWidth, noteHeight, color, calcAlpha(obj.time));
                 }
-
                 if (tailY >= 0 && tailY < this.judgmentLineY) {
                     this.drawNoteRect(
                         x, tailY, noteWidth, noteHeight * 0.3,
@@ -498,19 +571,16 @@ export class GameRenderer {
             } else {
                 const y = this.noteYAt(obj.time);
                 if (y < 0 || y > this.judgmentLineY) continue;
-
                 this.drawNoteRect(x, y, noteWidth, noteHeight, color, calcAlpha(obj.time));
             }
         }
-
         this.ctx.restore();
     }
 
-    drawNoteRect(x, y, w, h, color, alphaFactor = 1.0) {
+    drawNoteRect(x: number, y: number, w: number, h: number, color: string, alphaFactor: number = 1.0): void {
         const distance = Math.abs(y - this.judgmentLineY);
         const baseAlpha = Math.max(0.35, 1 - (distance / this.height) * 0.5);
         const alpha = Math.max(0, Math.min(1, baseAlpha * alphaFactor));
-
         this.ctx.shadowBlur = 10;
         this.ctx.shadowColor = color;
         const grad = this.ctx.createLinearGradient(x, y - h / 2, x, y + h / 2);
@@ -518,14 +588,13 @@ export class GameRenderer {
         grad.addColorStop(1, this.setAlpha(this.adjustBrightness(color, -30), alpha));
         this.ctx.fillStyle = grad;
         this.ctx.fillRect(x + 5, y - h / 2, w, h);
-
         this.ctx.strokeStyle = this.setAlpha(this.adjustBrightness(color, 40), alpha);
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(x + 5, y - h / 2, w, h);
         this.ctx.shadowBlur = 0;
     }
 
-    drawJudgmentLine() {
+    drawJudgmentLine(): void {
         const totalWidth = this.laneWidth * this.laneCount;
         const startX = (this.width - totalWidth) / 2;
         this.ctx.shadowBlur = 12;
@@ -543,7 +612,7 @@ export class GameRenderer {
         this.ctx.shadowBlur = 0;
     }
 
-    drawHUD() {
+    drawHUD(): void {
         const pad = 10;
         this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
         this.ctx.fillRect(pad, pad, 220, 100);
@@ -556,7 +625,7 @@ export class GameRenderer {
         this.ctx.fillText(`Acc: ${(this.stats.acc || 100).toFixed(2)}%`, pad + 110, pad + 65);
     }
 
-    updateFPS() {
+    updateFPS(): void {
         this.frameCount++;
         const now = Date.now();
         if (now - this.lastFpsUpdate >= 1000) {
@@ -566,7 +635,7 @@ export class GameRenderer {
         }
     }
 
-    adjustBrightness(color, amount) {
+    adjustBrightness(color: string, amount: number): string {
         const hex = color.replace('#', '');
         const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
         const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
@@ -574,7 +643,7 @@ export class GameRenderer {
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
-    setAlpha(color, alpha) {
+    setAlpha(color: string, alpha: number): string {
         const hex = color.replace('#', '');
         const r = parseInt(hex.substr(0, 2), 16);
         const g = parseInt(hex.substr(2, 2), 16);
@@ -582,19 +651,15 @@ export class GameRenderer {
         return `rgba(${r},${g},${b},${alpha})`;
     }
 
-    drawMeasures() {
+    drawMeasures(): void {
         if (!this.beatmap || !this.beatmap.measures) return;
-
         const totalWidth = this.laneWidth * this.laneCount;
         const startX = (this.width - totalWidth) / 2;
-
         this.ctx.strokeStyle = 'rgba(134,156,232,0.71)';
         this.ctx.lineWidth = 1;
-
         for (const measureTime of this.beatmap.measures) {
             const y = this.noteYAt(measureTime);
             if (y > this.judgmentLineY) continue;
-
             this.ctx.beginPath();
             this.ctx.moveTo(startX, y);
             this.ctx.lineTo(startX + totalWidth, y);
@@ -602,9 +667,196 @@ export class GameRenderer {
         }
     }
 
-    dispose() {
+    clearHitEffects(): void {
+        this.hitEffects = [];
+        if (this.particleWorker) {
+            this.particleWorker.postMessage({
+                type: 'clearHit'
+            });
+        }
+    }
+
+    dispose(): void {
         if (this.particleWorker) {
             this.particleWorker.terminate();
         }
+        this.stopIndependentRenderLoop();
+    }
+
+    // 设置是否禁用垂直同步
+    setDisableVsync(enabled: boolean): void {
+        if (this.disableVsync === enabled) return;
+
+        this.disableVsync = enabled;
+        if (enabled) {
+            // 启用独立渲染循环
+            this.startIndependentRenderLoop();
+        } else {
+            // 禁用独立渲染循环，恢复原来的render调用模式
+            this.stopIndependentRenderLoop();
+        }
+    }
+
+    // 启动独立渲染循环
+    startIndependentRenderLoop(): void {
+        if (this.isRendering || this.renderLoopId !== null) return;
+
+        this.isRendering = true;
+        this.lastRenderTime = performance.now();
+        this.renderAccumulator = 0;
+
+        const renderLoop = () => {
+            if (!this.isRendering) return;
+
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - this.lastRenderTime) / 1000;
+            this.lastRenderTime = currentTime;
+
+            // 限制deltaTime防止螺旋死亡
+            const fixedDeltaTime = Math.min(deltaTime, 0.1);
+
+            // 累积时间用于固定时间步长更新
+            this.renderAccumulator += fixedDeltaTime;
+
+            // 使用固定时间步长更新粒子（保持恒定）
+            while (this.renderAccumulator >= this.fixedTimeStep) {
+                this.updateAmbientParticles();
+                this.updateHitEffects();
+                this.renderAccumulator -= this.fixedTimeStep;
+            }
+
+            // 执行渲染（不使用插值）
+            this.renderFrame();
+
+            // 检查是否应该渲染下一帧（基于目标帧率）
+            const targetFrameTime = 1000 / this.targetFPS;
+            const elapsed = performance.now() - currentTime;
+
+            if (elapsed >= targetFrameTime) {
+                // 已经超过目标帧时间，立即执行下一帧（使用微任务避免阻塞）
+                Promise.resolve().then(() => {
+                    if (this.isRendering) {
+                        this.renderLoopId = requestAnimationFrame(renderLoop);
+                    }
+                });
+            } else {
+                // 还没到目标帧时间，使用requestAnimationFrame安排
+                this.renderLoopId = requestAnimationFrame(renderLoop);
+            }
+        };
+
+        // 启动循环
+        renderLoop();
+    }
+
+    // 停止独立渲染循环
+    stopIndependentRenderLoop(): void {
+        this.isRendering = false;
+        if (this.renderLoopId !== null) {
+            cancelAnimationFrame(this.renderLoopId);
+            this.renderLoopId = null;
+        }
+    }
+
+    // 独立渲染循环的渲染帧
+    private renderFrame(): void {
+        // 保存当前上下文状态
+        this.ctx.save();
+
+        // 清除画布
+        this.ctx.clearRect(0, 0, this.width, this.height);
+
+        // 绘制所有元素
+        this.drawBackgroundBase();
+        this.drawAmbientParticles();
+        this.drawBlurOverlay();
+        this.drawLanes();
+
+        // 绘制音符（使用原有方法）
+        this.drawHitObjects();
+
+        this.drawMeasures();
+        this.drawHitEffects();
+        this.drawJudgmentLine();
+        this.drawHUD();
+        this.updateFPS();
+
+        // 恢复上下文状态
+        this.ctx.restore();
+    }
+
+    // 带插值的音符绘制
+    private drawHitObjectsWithInterpolation(alpha: number): void {
+        if (!this.beatmap) return;
+
+        const objs = this.beatmap.hitObjects;
+        const totalWidth = this.laneWidth * this.laneCount;
+        const startX = (this.width - totalWidth) / 2;
+        const noteWidth = this.laneWidth - 4;
+        const noteHeight = 12;
+        const fadeEarly = 200;
+
+        // 计算插值后的时间
+        const interpolatedTime = this.currentTime + (alpha * 1000 / 60);
+
+        for (const obj of objs) {
+            const lastTime = obj.isLongNote ? obj.endTime : obj.time;
+            if (lastTime < interpolatedTime - this.visibleTrail) continue;
+            if (obj.time > interpolatedTime + this.visibleLeadTime) continue;
+
+            const x = startX + obj.column * this.laneWidth;
+            const color = this.showKeyGroup
+                ? this.keyGroupColors[obj.keyGroup % this.keyGroupColors.length]
+                : '#FFFFFF';
+
+            if (obj.isLongNote) {
+                const headY = this.noteYAtWithInterpolation(obj.time, alpha);
+                const tailY = this.noteYAtWithInterpolation(obj.endTime, alpha);
+
+                // 确保头部在上方
+                const bodyTop = Math.min(headY, tailY);
+                const bodyBottom = Math.max(headY, tailY);
+                const bodyLen = Math.max(2, bodyBottom - bodyTop);
+
+                // 绘制长按音符主体
+                const grad = this.ctx.createLinearGradient(x, bodyTop, x, bodyBottom);
+                grad.addColorStop(0, this.adjustBrightness(color, 1.4));
+                grad.addColorStop(0.5, color);
+                grad.addColorStop(1, this.adjustBrightness(color, 0.6));
+
+                this.ctx.fillStyle = grad;
+                this.ctx.fillRect(x + 2, bodyTop, noteWidth, bodyLen);
+
+                // 绘制头部
+                this.drawNoteRect(headY, x, noteWidth, noteHeight, color, true);
+
+                // 绘制尾部
+                this.drawNoteRect(tailY, x, noteWidth, noteHeight, color, false);
+            } else {
+                const y = this.noteYAtWithInterpolation(obj.time, alpha);
+                this.drawNoteRect(y, x, noteWidth, noteHeight, color, false);
+            }
+        }
+    }
+
+    // 带插值的时间到Y坐标转换
+    private noteYAtWithInterpolation(time: number, alpha: number): number {
+        const interpolatedTime = this.currentTime + (alpha * 1000 / 60);
+        const k = this.scrollSpeed / 1000;
+
+        if (!this.showSV || !this.beatmap?.svSegments?.length) {
+            const dt = time - interpolatedTime;
+            return this.judgmentLineY - k * dt;
+        }
+
+        // 使用SV积分计算位置（需要实现带插值的svAreaAt）
+        const aNote = this.svAreaAt(time);
+        const aNow = this.svAreaAt(interpolatedTime);
+        return this.judgmentLineY - k * (aNote - aNow);
+    }
+
+    // 设置目标帧率
+    setTargetFPS(fps: number): void {
+        this.targetFPS = Math.max(30, Math.min(500, fps)); // 限制在30-500fps之间
     }
 }
