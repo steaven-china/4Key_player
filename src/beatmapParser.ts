@@ -35,6 +35,8 @@ export interface Beatmap {
     keyCount: number;
     svSegments: SVSegment[];
     svCumAreas: number[];
+    combinedSegments: SVSegment[];
+    combinedCumAreas: number[];
     measures?: number[];
 }
 
@@ -55,7 +57,9 @@ export class BeatmapParser {
             hitObjects: [],
             keyCount: 0,
             svSegments: [],       // SV分段
-            svCumAreas: []        // 每段起点的累计面积（ms * sv）
+            svCumAreas: [],        // 每段起点的累计面积（ms * sv）
+            combinedSegments: [],   // BPM+SV混合分段
+            combinedCumAreas: []    // 混合累计面积
         };
 
         let currentSection = '';
@@ -203,6 +207,18 @@ export class BeatmapParser {
         }
     }
 
+    // 1. 添加 SV 范围限制（统一函数）
+    private clampSV(sv: number): number {
+        const MIN_SV = 0.01;  // 最小 0.01x
+        const MAX_SV = 10.0;  // 最大 10.0x（可根据需要调整）
+
+        if (sv < MIN_SV) return MIN_SV;
+        if (sv > MAX_SV) return MAX_SV;
+        if (!isFinite(sv) || isNaN(sv)) return 1.0;
+
+        return sv;
+    }
+
     // 构建SV分段并预计算累计面积（ms * sv）
     private buildSVSegments(beatmap: Beatmap): void {
         // 使用原始TP计算SV（保留负绿点）
@@ -215,18 +231,18 @@ export class BeatmapParser {
         const segments: SVSegment[] = [];
 
         // 找到每个时间点生效的SV（最近的有效绿点，否则baseSV）
-        function svAt(time: number): number {
+        const svAt = (time: number): number => {
             let sv = baseSV;
             for (let i = 0; i < tp.length; i++) {
                 const t = tp[i];
                 if (t.time > time) break;
                 if (!t.uninherited) {
-                    // 绿点：SV = baseSV * (100 / |-beatLength|)
-                    const raw = Math.abs(t.beatLength || 1); // 原始绿点是负值
-                    sv = baseSV * (100 / raw);
+                    // 绿点：SV = baseSV * (-100 / beatLength)
+                    const raw = t.beatLength || 1; // 保留原始符号
+                    sv = baseSV * (-100 / raw);
                 }
             }
-            return sv;
+            return this.clampSV(sv);  // ✅ 添加范围限制
         }
 
         for (let i = 0; i < changeTimes.length; i++) {
@@ -251,9 +267,24 @@ export class BeatmapParser {
         const cumAreas: number[] = [];
         let cum = 0;
         for (const seg of merged) {
-            cumAreas.push(cum); // 段起点的累计面积
+            cumAreas.push(cum);
             if (seg.end !== Infinity) {
-                cum += seg.sv * (seg.end - seg.start);
+                const duration = seg.end - seg.start;
+                const increment = seg.sv * duration;
+
+                // ✅ 添加溢出检查
+                if (!isFinite(increment) || isNaN(increment)) {
+                    console.warn(`Invalid increment at ${seg.start}: sv=${seg.sv}, duration=${duration}`);
+                    continue;
+                }
+
+                cum += increment;
+
+                // ✅ 添加累计值检查
+                if (!isFinite(cum) || isNaN(cum)) {
+                    console.error(`Cumulative area overflow at ${seg.start}`);
+                    cum = cumAreas[cumAreas.length - 1] || 0;  // 回退到上一个值
+                }
             } else {
                 // Infinity段不计入初始cum，运行时按实际t计算
                 cumAreas.push(cum);
@@ -263,6 +294,111 @@ export class BeatmapParser {
 
         beatmap.svSegments = merged;
         beatmap.svCumAreas = cumAreas;
+
+        // 5. 添加调试输出（可选，帮助排查）
+        console.log('SV Segments:', beatmap.svSegments.map(s =>
+            `[${s.start.toFixed(0)}-${s.end === Infinity ? '∞' : s.end.toFixed(0)}]: ${s.sv.toFixed(3)}x`
+        ));
+
+        // 构建BPM+SV混合分段
+        this.buildCombinedSegments(beatmap);
+    }
+
+    // 构建BPM+SV混合分段（BPM影响时间缩放，SV影响滚动速度）
+    private buildCombinedSegments(beatmap: Beatmap): void {
+        // 使用原始TP（保留负绿点）
+        const tp = [...(beatmap.rawTimingPointsForSV || beatmap.timingPoints)].sort((a, b) => a.time - b.time);
+        const baseSV = (beatmap.difficulty.SliderVelocity as number || 1);
+
+        // 找到第一个红点作为基准BPM
+        const firstRed = tp.find(t => t.uninherited);
+        if (!firstRed) {
+            // 没有红点，无法计算BPM缩放，使用纯SV分段
+            beatmap.combinedSegments = beatmap.svSegments;
+            beatmap.combinedCumAreas = beatmap.svCumAreas;
+            return;
+        }
+        const baseBPM = 60000 / firstRed.beatLength;
+
+        // 收集所有可能改变BPM或SV的时间点（包括0）
+        const changeTimes = [0, ...Array.from(new Set(tp.map(t => t.time)))].sort((a, b) => a - b);
+
+        const segments: SVSegment[] = [];
+
+        // 找到每个时间点生效的BPM和SV
+        const getBPMAndSV = (time: number): { bpm: number; sv: number } => {
+            let bpm = baseBPM;
+            let sv = baseSV;
+            for (let i = 0; i < tp.length; i++) {
+                const t = tp[i];
+                if (t.time > time) break;
+                if (t.uninherited) {
+                    // 红点：BPM = 60000 / beatLength
+                    bpm = 60000 / t.beatLength;
+                    // ✅ 添加 BPM 范围限制
+                    if (bpm < 1) bpm = 1;
+                    if (bpm > 1000) bpm = 1000;  // 限制最大 BPM
+                    if (!isFinite(bpm) || isNaN(bpm)) bpm = baseBPM;
+                } else {
+                    // 绿点：SV = baseSV * (-100 / beatLength)
+                    const raw = t.beatLength || 1;
+                    sv = baseSV * (-100 / raw);
+                }
+            }
+            return { bpm, sv: this.clampSV(sv) };  // ✅ 使用统一的范围限制
+        }
+
+        for (let i = 0; i < changeTimes.length; i++) {
+            const start = changeTimes[i];
+            const end = (i < changeTimes.length - 1) ? changeTimes[i + 1] : Infinity;
+            const { bpm, sv } = getBPMAndSV(start);
+            // 混合乘数 = SV * (当前BPM / 基准BPM)
+            const combinedMultiplier = sv;
+            segments.push({ start, end, sv: combinedMultiplier });
+        }
+
+        // 合并相邻相同乘数段
+        const merged: SVSegment[] = [];
+        for (const seg of segments) {
+            const last = merged[merged.length - 1];
+            if (last && last.sv === seg.sv && last.end === seg.start) {
+                last.end = seg.end;
+            } else {
+                merged.push({ ...seg });
+            }
+        }
+
+        // 累计面积：area(t) = ∑ combinedMultiplier_i * duration_i（ms * multiplier）
+        const cumAreas: number[] = [];
+        let cum = 0;
+        for (const seg of merged) {
+            cumAreas.push(cum);
+            if (seg.end !== Infinity) {
+                const duration = seg.end - seg.start;
+                const increment = seg.sv * duration;
+
+                // ✅ 添加溢出检查
+                if (!isFinite(increment) || isNaN(increment)) {
+                    console.warn(`Invalid increment at ${seg.start}: sv=${seg.sv}, duration=${duration}`);
+                    continue;
+                }
+
+                cum += increment;
+
+                // ✅ 添加累计值检查
+                if (!isFinite(cum) || isNaN(cum)) {
+                    console.error(`Cumulative area overflow at ${seg.start}`);
+                    cum = cumAreas[cumAreas.length - 1] || 0;  // 回退到上一个值
+                }
+            } else {
+                // Infinity段不计入初始cum，运行时按实际t计算
+                cumAreas.push(cum);
+                break;
+            }
+        }
+
+        beatmap.combinedSegments = merged;
+        beatmap.combinedCumAreas = cumAreas;
     }
 
     // 对齐 timingPoints 时间（供小节线等用途，不影响SV）

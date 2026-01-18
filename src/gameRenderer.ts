@@ -35,6 +35,7 @@ export class GameRenderer {
     private scrollSpeed: number = 800;
     private showSV: boolean = true;
     private showKeyGroup: boolean = true;
+    private useBPMScaling: boolean = false;
 
     private laneWidth: number = 120;
     private laneCount: number = 4;
@@ -102,11 +103,14 @@ export class GameRenderer {
         this._lastFrameTime = performance.now();
         this._accum = 0;
         this.pendingTasks = [];
+
+        // 默认启用BPM变速混合
+        this.useBPMScaling = true;
     }
 
     private initWorker(): void {
         try {
-            this.particleWorker = new Worker('out/particleWorker.js');
+            this.particleWorker = new Worker(new URL('./particleWorker.ts', import.meta.url));
             this.particleWorker.onmessage = (e: MessageEvent) => {
                 const { type, data } = e.data;
                 switch (type) {
@@ -227,6 +231,10 @@ export class GameRenderer {
         this.showKeyGroup = show;
     }
 
+    setUseBPMScaling(use: boolean): void {
+        this.useBPMScaling = use;
+    }
+
     setStats(stats: any): void {
         this.stats = stats;
     }
@@ -277,14 +285,36 @@ export class GameRenderer {
         return base + seg.sv * (clampedT - seg.start);
     }
 
+    // 计算BPM+SV混合下的累计面积（ms * multiplier）
+    combinedAreaAt(t: number): number {
+        const segs = this.beatmap?.combinedSegments || [];
+        const areas = this.beatmap?.combinedCumAreas || [];
+        if (!segs.length) return t;
+        let idx = 0, lo = 0, hi = segs.length - 1;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            const s = segs[mid];
+            if (t < s.start) hi = mid - 1;
+            else if (s.end !== Infinity && t >= s.end) lo = mid + 1;
+            else { idx = mid; break; }
+        }
+        const seg = segs[idx];
+        const base = areas[idx] || 0;
+        const end = seg.end === Infinity ? t : seg.end;
+        const clampedT = Math.max(seg.start, Math.min(t, end));
+        return base + seg.sv * (clampedT - seg.start);
+    }
+
     noteYAt(time: number): number {
         const k = this.scrollSpeed / 1000;
-        if (!this.showSV || !this.beatmap?.svSegments?.length) {
+        if (!this.showSV || (!this.beatmap?.svSegments?.length && !this.beatmap?.combinedSegments?.length)) {
             const dt = time - this.currentTime;
             return this.judgmentLineY - k * dt;
         }
-        const aNote = this.svAreaAt(time);
-        const aNow = this.svAreaAt(this.currentTime);
+        // 使用BPM+SV混合或纯SV积分
+        const areaFunc = this.useBPMScaling ? this.combinedAreaAt : this.svAreaAt;
+        const aNote = areaFunc.call(this, time);
+        const aNow = areaFunc.call(this, this.currentTime);
         return this.judgmentLineY - k * (aNote - aNow);
     }
 
@@ -844,14 +874,15 @@ export class GameRenderer {
         const interpolatedTime = this.currentTime + (alpha * 1000 / 60);
         const k = this.scrollSpeed / 1000;
 
-        if (!this.showSV || !this.beatmap?.svSegments?.length) {
+        if (!this.showSV || (!this.beatmap?.svSegments?.length && !this.beatmap?.combinedSegments?.length)) {
             const dt = time - interpolatedTime;
             return this.judgmentLineY - k * dt;
         }
 
-        // 使用SV积分计算位置（需要实现带插值的svAreaAt）
-        const aNote = this.svAreaAt(time);
-        const aNow = this.svAreaAt(interpolatedTime);
+        // 使用BPM+SV混合或纯SV积分
+        const areaFunc = this.useBPMScaling ? this.combinedAreaAt : this.svAreaAt;
+        const aNote = areaFunc.call(this, time);
+        const aNow = areaFunc.call(this, interpolatedTime);
         return this.judgmentLineY - k * (aNote - aNow);
     }
 

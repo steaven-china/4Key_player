@@ -99,16 +99,4 @@ document.addEventListener('DOMContentLoaded', () => {
 //         }
 //     });
 // }
-const isElectron = () =>
-    (typeof process !== 'undefined' && process.versions && process.versions.electron) ||
-    /electron/i.test(navigator.userAgent || '');
 
-let ex_it;
-if (isElectron()) {
-    const { ipcRenderer, webFrame } = require('electron');
-    webFrame.setZoomFactor(1);
-    ex_it = () => ipcRenderer.send('exit');
-
-} else {
-    ex_it = () => window.close(); // 浏览器环境的兜底（不能真正关闭标签页）
-}

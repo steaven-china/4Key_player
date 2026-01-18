@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>4K</title>
     <link rel="stylesheet" href="style.css">
-    <script src="renderer.js" rel="text/javascript"></script>
+    <script src="renderer.js" rel="text/javascript" type="module"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/i18next/25.5.2/i18next.js"></script>
-    <script type="module" src="out/main.js"></script>
-    <script src="i18essential.js" rel="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/i18next/25.5.2/i18next.js" type="module"></script>
+    <script type="module" src="/src/main.ts"></script>
+    <script src="i18essential.js" rel="text/javascript" type="module"></script>
+    <script>
+        const isElectron = () =>
+            (typeof process !== 'undefined' && process.versions && process.versions.electron) ||
+            /electron/i.test(navigator.userAgent || '');
+
+        let ex_it;
+        if (isElectron()) {
+            const { ipcRenderer, webFrame } = require('electron');
+            webFrame.setZoomFactor(1);
+            ex_it = () => ipcRenderer.send('exit');
+
+        } else {
+            ex_it = () => window.close(); // 浏览器环境的兜底（不能真正关闭标签页）
+        }
+    </script>
 </head>
 <body>
 <div class="container">

@@ -39,13 +39,14 @@ function createWindow() {
     const win = new BrowserWindow({
         width: 1200,
         height: 900,
+        icon: path.join(__dirname, 'favicon.ico'),
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
         }
     });
     win.setFullScreen(true);
-    win.loadFile('index.html').then(null);
+    win.loadFile('dist/index.html').then(null);
     Menu.setApplicationMenu(null);
     win.webContents.openDevTools();
     ipcMain.on('exit', () => {win.close()});
