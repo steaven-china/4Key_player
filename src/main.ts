@@ -1,9 +1,8 @@
-import { OSZParser } from './oszParser.js';
-import { BeatmapParser } from './beatmapParser.js';
-import { AudioManager } from './audioManager.js';
-import { GameRenderer } from './gameRenderer.js';
-import type { Beatmap, HitObject } from './beatmapParser.js';
-import { exists } from "i18next";
+import {OSZParser} from './oszParser.js';
+import type {Beatmap, HitObject} from './beatmapParser.js';
+import {BeatmapParser} from './beatmapParser.js';
+import {AudioManager} from './audioManager.js';
+import {GameRenderer} from './gameRenderer.js';
 
 type JudgementType = 'Perfect' | 'Great' | 'Good' | 'Bad' | 'Miss';
 
@@ -46,6 +45,9 @@ class Game {
     private progressFill: HTMLElement | null | undefined;
     private currentTimeElement: HTMLElement | null | undefined;
     private totalTimeElement: HTMLElement | null | undefined;
+    private resultPanel: HTMLElement | null | undefined;
+    private infoPanelElement: HTMLElement | null | undefined;
+    private naturalEnd: boolean;
 
     constructor() {
 
@@ -58,29 +60,49 @@ class Game {
         }
         this.currentTimeElement = document.getElementById("currentTime");
         this.totalTimeElement = document.getElementById("totalTime");
+        this.resultPanel = document.getElementById("resultPanel");
+        this.infoPanelElement = document.querySelector(".info-panel") as HTMLElement | null;
+        this.naturalEnd = false;
 
         this.audioManager.onEnded = () => {
 
             this.ShowScore = this.stats;
             this.isend = true;
+            this.naturalEnd = true;
             this.stop();
             if (this.renderer) this.renderer.clearHitEffects();
             // 清空列物件缓存（如果需要完全回收）
             this.columns = [[], [], [], []];
-            if (this.progressFill) {
-                // 游戏结束时的全屏效果 - 垂直渐变
-                this.progressFill.style.width = '100%';
-                this.progressFill.style.height = '100vh';
-                this.progressFill.style.position = 'fixed';
-                this.progressFill.style.top = '0';
-                this.progressFill.style.left = '0';
-                this.progressFill.style.zIndex = '9999';
-                this.progressFill.style.transition = 'all 1s ease-in-out';
-                // 添加垂直渐变背景
-                this.progressFill.style.background = 'linear-gradient(to bottom, #667eea 0%, #764ba2 30%, #5a6de0 60%, #6d45a0 100%)';
-                // 添加一些视觉效果
-                this.progressFill.style.boxShadow = 'inset 0 0 50px rgba(0, 0, 0, 0.3)';
+            if (this.resultPanel) {
+                // 从左侧向右展开效果
+                this.resultPanel.style.position = 'absolute';
+                this.resultPanel.style.top = '0';
+                this.resultPanel.style.left = '0';
+                this.resultPanel.style.width = '0';
+                this.resultPanel.style.height = '100%';
+                this.resultPanel.style.backgroundColor = '#ADD8E6'; // 浅蓝色
+                this.resultPanel.style.transition = 'width 0.8s ease-in-out';
+                this.resultPanel.style.zIndex = '9999';
+                this.resultPanel.style.overflow = 'hidden';
+
+                // 预先设置Chart信息的transition
+                if (this.infoPanelElement) {
+                    this.infoPanelElement.style.transition = 'all 0.8s ease-in-out';
+                }
+
+                // 触发动画
+                setTimeout(() => {
+                    this.resultPanel!.style.width = '40%';
+                    // 同步Chart信息滑移至右侧
+                    if (this.infoPanelElement) {
+                        this.infoPanelElement.style.transform = 'translateX(40vw)';
+                    }
+                }, 100);
             }
+
+
+            // 显示分数结果
+            this.ToResult(this.stats);
 
         }
         this.beatmaps = [];
@@ -710,6 +732,25 @@ class Game {
             this.progressFill.style.boxShadow = '';
         }
 
+        // 重置结果面板
+        if (this.resultPanel) {
+            this.resultPanel.style.width = '0';
+            this.resultPanel.style.transition = 'none';
+            this.resultPanel.style.position = '';
+            this.resultPanel.style.top = '';
+            this.resultPanel.style.left = '';
+            this.resultPanel.style.height = '';
+            this.resultPanel.style.backgroundColor = '';
+            this.resultPanel.style.zIndex = '';
+            this.resultPanel.style.overflow = '';
+        }
+
+        // 重置Chart信息位置
+        if (this.infoPanelElement) {
+            this.infoPanelElement.style.transition = 'none';
+            this.infoPanelElement.style.transform = '';
+        }
+
         (document.getElementById('playBtn') as HTMLButtonElement).disabled = false;
         (document.getElementById('pauseBtn') as HTMLButtonElement).disabled = false;
         (document.getElementById('stopBtn') as HTMLButtonElement).disabled = false;
@@ -837,6 +878,8 @@ class Game {
         this.columns = [[], [], [], []]; // 重新初始化 columns
         this.nextIndex = [0, 0, 0, 0];
         this.waitingForStart = false;
+        const wasNaturalEnd = this.naturalEnd;
+        this.naturalEnd = false;
         // 重置 hit 状态
         if (this.currentBeatmap?.hitObjects) {
             for (const obj of this.currentBeatmap.hitObjects) {
@@ -844,13 +887,15 @@ class Game {
                 obj.judgedTail = false;
             }
         }
-        // 重置统计并立即应用到渲染器
-        this.stats = {
-            score: 0, combo: 0, acc: 100,
-            totalHits: 0, weightedHits: 0,
-            judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
-        };
-        this.renderer!.setStats(this.stats);
+        // 重置统计并立即应用到渲染器（自然结束时保留分数）
+        if (!wasNaturalEnd) {
+            this.stats = {
+                score: 0, combo: 0, acc: 100,
+                totalHits: 0, weightedHits: 0,
+                judgements: { Perfect: 0, Great: 0, Good: 0, Bad: 0, Miss: 0 }
+            };
+            this.renderer!.setStats(this.stats);
+        }
         // this.renderer.ctx.opacity = 0;
 
         // 其它遮罩
@@ -880,11 +925,61 @@ class Game {
             this.progressFill.style.boxShadow = '';
         }
 
+        // 重置结果面板（自然结束时保留显示）
+        if (this.resultPanel && !wasNaturalEnd) {
+            this.resultPanel.style.width = '0';
+            this.resultPanel.style.transition = 'none';
+            this.resultPanel.style.position = '';
+            this.resultPanel.style.top = '';
+            this.resultPanel.style.left = '';
+            this.resultPanel.style.height = '';
+            this.resultPanel.style.backgroundColor = '';
+            this.resultPanel.style.zIndex = '';
+            this.resultPanel.style.overflow = '';
+        }
+
+        // 重置Chart信息位置（自然结束时保留显示）
+        if (this.infoPanelElement && !wasNaturalEnd) {
+            this.infoPanelElement.style.transition = 'none';
+            this.infoPanelElement.style.transform = '';
+        }
+
         this.saveSettings(); // 使用统一的设置保存方法
     }
 
     ToResult(score: any) {
-        document.getElementById("result-Left")!.textContent = score;
+        const resultLeftElement = document.getElementById("result-Left");
+        if (resultLeftElement) {
+            resultLeftElement.textContent = score.score ? score.score.toString() : score;
+        }
+
+        // 在结果面板中显示分数信息
+        if (this.resultPanel) {
+            const stats = score;
+            this.resultPanel.innerHTML = `
+                <div style="padding: 20px; color: #333; font-family: sans-serif;opacity: 1">
+                    <h1 style="color: #444; margin-bottom: 20px;">游戏结果</h1>
+                    <h2 style="color: #444; margin-bottom: 20px;">result</h2>
+                    <div style="margin-bottom: 10px;">
+                        <strong>分数:</strong> ${stats.score}
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <strong>最大连击:</strong> ${stats.combo}
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <strong>准确率:</strong> ${stats.acc.toFixed(2)}%
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <strong>判定统计:</strong>
+                        <div>Perfect: ${stats.judgements.Perfect}</div>
+                        <div>Great: ${stats.judgements.Great}</div>
+                        <div>Good: ${stats.judgements.Good}</div>
+                        <div>Bad: ${stats.judgements.Bad}</div>
+                        <div>Miss: ${stats.judgements.Miss}</div>
+                    </div>
+                </div>
+            `;
+        }
     }
 
     startGameLoop() {

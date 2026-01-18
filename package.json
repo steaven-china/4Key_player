@@ -11,6 +11,7 @@
   "description": "A Simple 4Key rhythm game player",
   "scripts": {
     "start": "electron-forge start",
+    "build": "tsc",
     "electron": "electron .",
     "web": "vite .",
     "package": "electron-forge package",

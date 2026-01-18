@@ -20,7 +20,7 @@
             <p id="songMapper"></p>
             <p>测试版本,仅供参考(opensource code license GPL-v3-only)<br/><a
                     href="https://github.com/steaven-china/4key_player" style="text-decoration: none;color:#5e3c2d;">4key_player
-                <br/>copyright (c) 2025 steaven-china branch:issue-7</a></p>
+                <br/>copyright (c) 2025 steaven-china branch:new_feature</a></p>
         </div>
         <div class="settings-panel" id="draggablePanel">
             <h3 class="settings-header" data-i18n="settings.title">Settings</h3>
@@ -90,14 +90,15 @@
         </div>
         <canvas id="gameCanvas"></canvas>
         <div class="progress-bar">
-            <div class="progress-fill" id="progressFill"></div>
+            <div class="progress-fill" id="progressFill" style="transition:all 1s ease-in-out"></div>
             <div class="progress-time">
                 <span id="currentTime">0:00</span>
                 <span id="totalTime">0:00</span>
             </div>
         </div>
         <div id="pauseOverlay">
-            <div id="results">
+            <div id="resultPanel"></div>
+            <div id="results" style="opacity: 0;">
                 <div id="result-Left" class="result-in">
                     <div class="test_block test_text">1</div>
                 </div>

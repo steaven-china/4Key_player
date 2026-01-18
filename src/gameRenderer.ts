@@ -1,7 +1,7 @@
 // @ts-nocheck
 // 游戏渲染器 - 使用 Worker 处理粒子 - TypeScript版本
 
-import type { Beatmap, HitObject, SVSegment } from './beatmapParser.js';
+import type {Beatmap} from './beatmapParser.js';
 
 interface AmbientParticle {
     x: number;
@@ -78,7 +78,7 @@ export class GameRenderer {
     // 独立渲染循环属性
     private disableVsync: boolean = false;
     private renderLoopId: number | null = null;
-    private targetFPS: number = 240; // 默认目标帧率
+    private targetFPS: number = 360; // 默认目标帧率
     private lastRenderTime: number = 0;
     private renderAccumulator: number = 0;
     private fixedTimeStep: number = 1 / 60; // 用于粒子更新的固定时间步长
@@ -793,7 +793,7 @@ export class GameRenderer {
         const totalWidth = this.laneWidth * this.laneCount;
         const startX = (this.width - totalWidth) / 2;
         const noteWidth = this.laneWidth - 4;
-        const noteHeight = 12;
+        const noteHeight = 24;
         const fadeEarly = 200;
 
         // 计算插值后的时间
