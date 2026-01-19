@@ -58,3 +58,6 @@ jobs:
               github.event.inputs.redeploy && format('Re-deploy manually [{0}]', github.run_number) || 
               format('Auto-deploy from push [{0}]', github.run_number)
             }}
+permissions:
+  contents: write
+  deployments: write
