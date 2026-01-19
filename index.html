@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>4K</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/i18next/25.5.2/i18next.js"
+      type="module"
+    ></script>
+    <script>
+      const isElectron = () =>
+        (typeof process !== "undefined" &&
+          process.versions &&
+          process.versions.electron) ||
+        /electron/i.test(navigator.userAgent || "");
+
+      let ex_it;
+      if (isElectron()) {
+        const { ipcRenderer, webFrame } = require("electron");
+        webFrame.setZoomFactor(1);
+        ex_it = () => ipcRenderer.send("exit");
+      } else {
+        ex_it = () => window.close(); // 浏览器环境的兜底（不能真正关闭标签页）
+      }
+    </script>
+    <script type="module" crossorigin src="./assets/index-C3Z3N9xv.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B5YOnCEx.css">
+  </head>
+  <body>
+    <div class="container">
+      <div class="info-panel" style="">
+        <div class="song-info">
+          <h2 id="songTitle">Chart Isn't Load In</h2>
+          <p id="songArtist"></p>
+          <p id="songMapper"></p>
+          <p>
+            测试版本,仅供参考(opensource code license GPL-v3-only)<br /><a
+              href="https://github.com/steaven-china/4key_player"
+              style="text-decoration: none; color: #5e3c2d"
+              >4key_player <br />copyright (c) 2025 steaven-china</a>
+          </p>
+        </div>
+        <div class="settings-panel" id="draggablePanel">
+          <h3 class="settings-header" data-i18n="settings.title">Settings</h3>
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="showSV" checked />
+              <span data-i18n="settings.showSV">Show SV</span>
+            </label>
+          </div>
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="showKeyGroup" checked />
+              <span data-i18n="settings.showKeyGroup"
+                >Show Key Group Color</span
+              >
+            </label>
+          </div>
+          <div class="setting-item">
+            <label
+              ><span data-i18n="settings.scrollSpeed">Scroll Speed:</span
+              ><span id="scrollSpeedValue">40</span></label
+            >
+            <label for="scrollSpeed"></label
+            ><input
+              type="range"
+              id="scrollSpeed"
+              min="5"
+              max="80"
+              value="40"
+              step="0.1"
+            />
+            <label for="autoPlayBtn"
+              ><input type="checkbox" id="autoPlayBtn" /><span
+                data-i18n="settings.autoPlay"
+                >AutoPlay</span
+              ></label
+            >
+            <label for="languageSelect" data-i18n="settings.language"
+              >Language:</label
+            >
+            <select id="languageSelect">
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+            </select>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="disableVsync" />
+                <span data-i18n="settings.disableVsync"
+                  >Disable V-Sync (Uncapped FPS)</span
+                ><span>experimental</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <span data-i18n="settings.offset">Audio Offset:</span>
+                <span id="offsetValue">0ms</span>
+              </label>
+              <div
+                class="audio-lead-in-info"
+                id="audioLeadInInfo"
+                style="
+                  font-size: 12px;
+                  color: #888;
+                  margin-top: 2px;
+                  display: none;
+                "
+              >
+                <span data-i18n="settings.audioLeadIn">Audio Lead-In:</span>
+                <span id="audioLeadInValue">0ms</span>
+              </div>
+              <input
+                type="range"
+                id="offsetSlider"
+                min="-300"
+                max="300"
+                value="0"
+                step="1"
+              />
+              <div class="offset-buttons">
+                <button id="offsetMinus10" class="offset-btn">-10ms</button>
+                <button id="offsetReset" class="offset-btn">Reset</button>
+                <button id="offsetPlus10" class="offset-btn">+10ms</button>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label>
+                <span data-i18n="settings.measureOffset"
+                  >Measure Line Offset:</span
+                >
+                <span id="measureOffsetValue">0ms</span>
+              </label>
+              <input
+                type="range"
+                id="measureOffsetSlider"
+                min="-300"
+                max="300"
+                value="0"
+                step="1"
+              />
+              <div class="offset-buttons">
+                <button id="measureOffsetMinus10" class="offset-btn">
+                  -10ms
+                </button>
+                <button id="measureOffsetReset" class="offset-btn">
+                  Reset
+                </button>
+                <button id="measureOffsetPlus10" class="offset-btn">
+                  +10ms
+                </button>
+              </div>
+            </div>
+            <div class="setting-buttons">
+              <button
+                id="saveSettingsBtn"
+                class="settings-btn"
+                data-i18n="settings.save"
+              >
+                Save Settings
+              </button>
+              <button
+                id="clearSettingsBtn"
+                class="settings-btn"
+                data-i18n="settings.clear"
+              >
+                Clear Settings
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="StartupCanvas">
+          <h1 data-i18n="title">4key_Player</h1>
+          <div class="controls">
+            <input
+              type="file"
+              id="oszFile"
+              accept=".osz,.osu,.pcz"
+              class="file-input"
+            />
+            <label
+              for="oszFile"
+              class="file-label"
+              data-i18n="controls.chooseFile"
+              >Chose The "OSZ" File</label
+            >
+            <label for="difficultySelect"
+              ><select id="difficultySelect" class="difficulty-select" disabled>
+                <option value="" data-i18n="controls.exit">Difficulty</option>
+              </select></label
+            >
+          </div>
+        </div>
+        <div class="playback-controls" id="draggableSettings">
+          <button id="playBtn" disabled>Play</button>
+          <button id="pauseBtn" disabled>Pause</button>
+          <button id="stopBtn" disabled>Stop</button>
+          <div class="speed-control">
+            <label>Speed <span id="speedValue">1.0x</span></label>
+            <label for="speedSlider"
+              ><input
+                type="range"
+                id="speedSlider"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value="1"
+            /></label>
+          </div>
+        </div>
+      </div>
+      <div class="game-container">
+        <div id="Exit-Check">
+          <p data-i18n="controls.exit" id="on-exit"></p>
+          <button onclick="ex_it();" id="exit-button">Yes</button>
+          <p id="ru-sure">Are You Sure?</p>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div class="progress-bar">
+          <div
+            class="progress-fill"
+            id="progressFill"
+            style="transition: all 1s ease-in-out"
+          ></div>
+          <div class="progress-time">
+            <span id="currentTime">0:00</span>
+            <span id="totalTime">0:00</span>
+          </div>
+        </div>
+        <div id="pauseOverlay">
+          <div id="resultPanel"></div>
+          <div id="results" style="opacity: 0">
+            <div id="result-Left" class="result-in">
+              <div class="test_block test_text">1</div>
+            </div>
+            <div id="result-Top" class="result-in">
+              <div class="test_block test_text">2</div>
+            </div>
+            <div id="result-Right" class="result-in">
+              <div class="test_block test_text">3</div>
+            </div>
+            <div id="result-Bottom" class="result-in">
+              <div class="test_block test_text">4</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
