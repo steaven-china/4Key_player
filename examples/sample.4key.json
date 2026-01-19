@@ -1,5 +1,5 @@
 {
-  "$schema": "https://4key-player.github.io/schema/beatmap-v1.json",
+  "$schema": "https://github.com/steaven-china/4Key_player/blob/new-feature/examples/sample.4key.json",
   "formatVersion": "1.0.0",
   "metadata": {
     "title": "Test Song",
