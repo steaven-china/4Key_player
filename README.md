@@ -137,15 +137,9 @@ This project is licensed under the GPLv3 License. See the [LICENSE](LICENSE) fil
 3. Improve PCZ format validation and error handling
 
 ## Tools and Utilities
-
-### Conversion Tools
-- **OSZ to PCZ Converter**: Convert existing `.osz` files to the new `.pcz` format
-- **PCZ Creation Script**: Create `.pcz` files from JSON beatmaps, audio, and images
-
-### Documentation
-- [PCZ Format Documentation](docs/PCZ_FORMAT.md) - Complete specification of the PCZ format
-- [Parser Architecture](docs/parser-architecture.md) - Technical details of the parsing system
-- [Conversion Guide](examples/OSZ_TO_PCZ_README.md) - Step-by-step conversion instructions
+Make By Your Self lol.
+(Acturally is my fault cause i've forget update it...
+But Maybe you shouldn't use it now?)
 
 ## About `.pcz`
 May just a piece chart's of `zip`.
