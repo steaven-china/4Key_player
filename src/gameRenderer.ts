@@ -663,7 +663,7 @@ export class GameRenderer {
     const totalWidth = this.laneWidth * this.laneCount;
     const startX = (this.width - totalWidth) / 2;
     const noteWidth = this.laneWidth - 10;
-    const noteHeight = 15;
+    const noteHeight = 20;
     const fadeEarly = 150;
 
     this.ctx.save();

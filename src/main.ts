@@ -1,4 +1,5 @@
 import { OSZParser } from "./oszParser.js";
+import { PCZParser } from "./pczParser.js";
 import type { Beatmap, HitObject } from "./beatmapParser.js";
 import { BeatmapParserFactory } from "./parserFactory.js";
 import { AudioManager } from "./audioManager.js";
@@ -8,6 +9,7 @@ type JudgementType = "Perfect" | "Great" | "Good" | "Bad" | "Miss";
 
 class Game {
   private oszParser: OSZParser;
+  private pczParser: PCZParser;
   private audioManager: AudioManager;
   private renderer: GameRenderer | null;
   private beatmaps: Array<{ filename: string; data: Beatmap }>;
@@ -53,6 +55,7 @@ class Game {
 
   constructor() {
     this.oszParser = new OSZParser();
+    this.pczParser = new PCZParser();
     this.audioManager = new AudioManager();
     this.renderer = null;
     this.offset = 0; // 默认偏移量为0
@@ -790,6 +793,9 @@ class Game {
       let files;
       if (ext === "osz") files = await this.oszParser.loadOSZ(file);
       else if (ext === "osu") files = await this.oszParser.loadSingleOSU(file);
+      else if (ext === "pcz") files = await this.pczParser.loadPCZ(file);
+      else if (PCZParser.isJSONBeatmapFile(file))
+        files = await this.pczParser.loadSingleJSON(file);
       else {
         alert("不支持的文件格式");
         return;

@@ -62,8 +62,8 @@ export abstract class BaseBeatmapParser implements IBeatmapParser {
 
   // 公共工具方法
   protected clampSV(sv: number): number {
-    const MIN_SV = 0.1;
-    const MAX_SV = 10.0;
+    const MIN_SV = 0.001;
+    const MAX_SV = 30.0;
     return Math.max(MIN_SV, Math.min(MAX_SV, sv));
   }
 
