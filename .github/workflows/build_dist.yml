@@ -1,50 +1,60 @@
 name: Build and Deploy to GitHub Pages
+
 on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
-  # 手动触发
+
   workflow_dispatch:
     inputs:
       redeploy:
-        description: '强制重新部署？即使没有代码更改'
+        description: 'Force redeploy? Even if no code changes'
         required: false
         default: 'false'
         type: choice
         options:
           - 'false'
           - 'true'
+
 jobs:
   build:
     runs-on: macos-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Set up Node.js (ARM64)
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           architecture: arm64
-      - name: Install dependencies
+
+      - name: Install dependencies using npm ci
         run: npm ci
+
       - name: Build project
         run: npm run build
+
       - name: Upload dist folder as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dist-folder
+          name: dist-folder-${{ github.run_number }}
           path: dist/
           if-no-files-found: error
+
       - name: Deploy to GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          echo "Deploying to GitHub Pages..."
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
+          commit_message: >
+            ${{ 
+              github.event.inputs.redeploy && format('Re-deploy manually [{0}]', github.run_number) || 
+              format('Auto-deploy from push [{0}]', github.run_number)
+            }}
