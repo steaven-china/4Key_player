@@ -1,40 +1,43 @@
 {
-  "name": "4key-player",
-  "version": "0.1.0",
-  "main": "electron-main.js",
-  "author": {
-    "email": "rgterff@163.com",
-    "name": "steaven-china",
-    "url": "4kp.sakina.icu"
-  },
-  "license": "GPL-3.0-only",
-  "description": "A Simple 4Key rhythm game player",
-  "scripts": {
-    "start": "electron-forge start",
-    "electron": "electron .",
-    "web": "serve .",
-    "package": "electron-forge package",
-    "make": "electron-forge make"
-  },
-  "dependencies": {
-    "electron-squirrel-startup": "^1.0.1",
-    "i18next": "^25.6.1",
-    "jszip": "^3.10.1"
-  },
-  "devDependencies": {
-    "@capacitor/cli": "^7.4.4",
-    "@capacitor/core": "^7.4.4",
-    "@capacitor/ios": "^7.4.4",
-    "@electron-forge/cli": "^7.10.2",
-    "@electron-forge/maker-deb": "^7.10.2",
-    "@electron-forge/maker-rpm": "^7.10.2",
-    "@electron-forge/maker-squirrel": "^7.10.2",
-    "@electron-forge/maker-zip": "^7.10.2",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.10.2",
-    "@electron-forge/plugin-fuses": "^7.10.2",
-    "@electron/fuses": "^1.8.0",
-    "electron": "38.0.0-beta.6",
-    "serve": "^14.2.0"
-  },
-  "packageManager": "pnpm@10.20.0"
+    "name": "4key-player",
+    "version": "0.1.1",
+    "main": "electron-main.js",
+    "author": {
+        "email": "rgterff@163.com",
+        "name": "steaven-china",
+        "url": "https://4kp.sakina.icu"
+    },
+    "license": "GPL-3.0-only",
+    "description": "A Simple 4Key rhythm game player",
+    "scripts": {
+        "start": "electron-forge start",
+        "build": "tsc&&vite build",
+        "electron": "electron .",
+        "web": "vite .",
+        "package": "electron-forge package",
+        "make": "electron-forge make"
+    },
+    "dependencies": {
+        "electron-squirrel-startup": "^1.0.1",
+        "i18next": "^25.6.1",
+        "jszip": "^3.10.1",
+        "typescript": "^5.9.3",
+        "vite": "^7.3.1"
+    },
+    "devDependencies": {
+        "@capacitor/cli": "^7.4.4",
+        "@capacitor/core": "^7.4.4",
+        "@capacitor/ios": "^7.4.4",
+        "@electron-forge/cli": "^7.10.2",
+        "@electron-forge/maker-deb": "^7.10.2",
+        "@electron-forge/maker-rpm": "^7.10.2",
+        "@electron-forge/maker-squirrel": "^7.10.2",
+        "@electron-forge/maker-zip": "^7.10.2",
+        "@electron-forge/plugin-auto-unpack-natives": "^7.10.2",
+        "@electron-forge/plugin-fuses": "^7.10.2",
+        "@electron/fuses": "^1.8.0",
+        "electron": "38.0.0-beta.6",
+        "serve": "^14.2.0"
+    },
+    "packageManager": "pnpm@10.20.0"
 }

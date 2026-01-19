@@ -1,0 +1,289 @@
+{
+  "$schema": "https://github.com/steaven-china/4Key_player/blob/new-feature/examples/sample.4key.json",
+  "formatVersion": "1.0.0",
+  "metadata": {
+    "title": "Test Song",
+    "titleUnicode": "测试歌曲",
+    "artist": "Test Artist",
+    "artistUnicode": "测试艺术家",
+    "creator": "Test Mapper",
+    "version": "4Key Test",
+    "source": "Test Album",
+    "tags": ["test", "4key", "demo"],
+    "beatmapId": 999999,
+    "beatmapSetId": 99999
+  },
+  "general": {
+    "audioFilename": "test.mp3",
+    "audioLeadIn": 0,
+    "previewTime": 30000,
+    "countdown": 0,
+    "sampleSet": "Normal",
+    "stackLeniency": 0.7,
+    "mode": 3,
+    "letterboxInBreaks": false,
+    "useSkinSprites": false,
+    "overlayPosition": "NoChange"
+  },
+  "editor": {
+    "bookmarks": [1000, 2000, 3000],
+    "distanceSpacing": 1.0,
+    "beatDivisor": 4,
+    "gridSize": 4,
+    "timelineZoom": 1.0
+  },
+  "difficulty": {
+    "hpDrainRate": 5.0,
+    "circleSize": 4.0,
+    "overallDifficulty": 8.0,
+    "approachRate": 9.0,
+    "sliderMultiplier": 1.4,
+    "sliderTickRate": 1.0
+  },
+  "timing": {
+    "baseBPM": 180.0,
+    "baseSV": 1.0,
+    "points": [
+      {
+        "time": 0,
+        "beatLength": 333.333,
+        "meter": 4,
+        "sampleSet": 1,
+        "sampleIndex": 0,
+        "volume": 80,
+        "uninherited": true,
+        "effects": 0
+      },
+      {
+        "time": 8000,
+        "beatLength": -100,
+        "meter": 4,
+        "sampleSet": 1,
+        "sampleIndex": 0,
+        "volume": 80,
+        "uninherited": false,
+        "effects": 0
+      }
+    ]
+  },
+  "objects": {
+    "keyCount": 4,
+    "hitObjects": [
+      {
+        "id": "obj_001",
+        "type": "circle",
+        "time": 1000,
+        "column": 0,
+        "x": 64,
+        "y": 192,
+        "hitsound": {
+          "normalSet": 0,
+          "additionSet": 0,
+          "index": 0,
+          "volume": 80,
+          "filename": null
+        },
+        "extras": {
+          "keyGroup": 0,
+          "comboIndex": 0,
+          "comboNumber": 1
+        }
+      },
+      {
+        "id": "obj_002",
+        "type": "circle",
+        "time": 2000,
+        "column": 1,
+        "x": 192,
+        "y": 192,
+        "hitsound": {
+          "normalSet": 0,
+          "additionSet": 0,
+          "index": 0,
+          "volume": 80,
+          "filename": null
+        },
+        "extras": {
+          "keyGroup": 0,
+          "comboIndex": 1,
+          "comboNumber": 1
+        }
+      },
+      {
+        "id": "obj_003",
+        "type": "circle",
+        "time": 3000,
+        "column": 2,
+        "x": 320,
+        "y": 192,
+        "hitsound": {
+          "normalSet": 0,
+          "additionSet": 0,
+          "index": 0,
+          "volume": 80,
+          "filename": null
+        },
+        "extras": {
+          "keyGroup": 0,
+          "comboIndex": 2,
+          "comboNumber": 1
+        }
+      },
+      {
+        "id": "obj_004",
+        "type": "circle",
+        "time": 4000,
+        "column": 3,
+        "x": 448,
+        "y": 192,
+        "hitsound": {
+          "normalSet": 0,
+          "additionSet": 0,
+          "index": 0,
+          "volume": 80,
+          "filename": null
+        },
+        "extras": {
+          "keyGroup": 0,
+          "comboIndex": 3,
+          "comboNumber": 1
+        }
+      },
+      {
+        "id": "obj_005",
+        "type": "longNote",
+        "startTime": 5000,
+        "endTime": 7000,
+        "column": 0,
+        "x": 64,
+        "y": 192,
+        "hitsound": {
+          "normalSet": 0,
+          "additionSet": 0,
+          "index": 0,
+          "volume": 80,
+          "filename": null
+        },
+        "extras": {
+          "keyGroup": 1,
+          "comboIndex": 0,
+          "comboNumber": 2
+        }
+      },
+      {
+        "id": "obj_006",
+        "type": "longNote",
+        "startTime": 6000,
+        "endTime": 8000,
+        "column": 3,
+        "x": 448,
+        "y": 192,
+        "hitsound": {
+          "normalSet": 0,
+          "additionSet": 0,
+          "index": 0,
+          "volume": 80,
+          "filename": null
+        },
+        "extras": {
+          "keyGroup": 1,
+          "comboIndex": 1,
+          "comboNumber": 2
+        }
+      }
+    ],
+    "keyGroups": [
+      {
+        "id": 0,
+        "color": "#FF6B6B",
+        "objects": ["obj_001", "obj_002", "obj_003", "obj_004"]
+      },
+      {
+        "id": 1,
+        "color": "#4ECDC4",
+        "objects": ["obj_005", "obj_006"]
+      }
+    ]
+  },
+  "events": {
+    "background": {
+      "filename": "bg.jpg",
+      "xOffset": 0,
+      "yOffset": 0
+    },
+    "breakPeriods": [
+      {
+        "startTime": 9000,
+        "endTime": 10000
+      }
+    ]
+  },
+  "colors": {
+    "comboColors": [
+      {"r": 255, "g": 192, "b": 0},
+      {"r": 0, "g": 202, "b": 0},
+      {"r": 18, "g": 124, "b": 255},
+      {"r": 242, "g": 24, "b": 57}
+    ]
+  },
+  "calculated": {
+    "svSegments": [
+      {
+        "start": 0,
+        "end": 8000,
+        "sv": 1.0,
+        "bpm": 180.0
+      },
+      {
+        "start": 8000,
+        "end": 10000,
+        "sv": 1.5,
+        "bpm": 180.0
+      }
+    ],
+    "svCumAreas": [0, 12000],
+    "combinedSegments": [
+      {
+        "start": 0,
+        "end": 8000,
+        "sv": 1.0,
+        "bpm": 180.0,
+        "multiplier": 1.0
+      },
+      {
+        "start": 8000,
+        "end": 10000,
+        "sv": 1.5,
+        "bpm": 180.0,
+        "multiplier": 1.5
+      }
+    ],
+    "combinedCumAreas": [0, 13000],
+    "measures": [0, 1333, 2666, 4000, 5333, 6666, 8000],
+    "maxCombo": 6,
+    "totalObjects": 6,
+    "duration": 10000,
+    "drainTime": 8000
+  },
+  "custom": {
+    "4keySpecific": {
+      "scrollSpeed": 800,
+      "judgementWindows": {
+        "perfect": 22,
+        "great": 46,
+        "good": 86,
+        "bad": 136,
+        "miss": 180
+      },
+      "keyBindings": ["d", "f", "j", "k"],
+      "skin": "default",
+      "particleEffects": true
+    },
+    "creatorInfo": {
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2024-01-02T00:00:00Z",
+      "toolsUsed": ["4Key Editor v2.0"],
+      "tags": ["test", "demo", "simple"]
+    }
+  }
+}

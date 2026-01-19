@@ -1,37 +1,44 @@
 // 优化的音频管理器 - 支持音效池和异步加载
-export class AudioManager {
-    constructor() {
-        this.audio = null;
-        this.audioContext = null;
-        this.sourceNode = null;
-        this.onEnded = null;
-        this.isPlaying = false;
-        this.startTime = 0;
-        this.pauseTime = 0;
-        this.playbackRate = 1.0;
 
-        // 音效池
-        this.soundPool = new Map();
-        this.poolSize = 10;
+type SoundData = {
+    buffer: AudioBuffer;
+    instances: AudioBufferSourceNode[];
+};
+
+export class AudioManager {
+    private audio: HTMLAudioElement | null = null;
+    private audioContext: AudioContext | null = null;
+    private sourceNode: AudioBufferSourceNode | null = null;
+    public onEnded: (() => void) | null = null;
+    private isPlaying: boolean = false;
+    private startTime: number = 0;
+    private pauseTime: number = 0;
+    private playbackRate: number = 1.0;
+
+    // 音效池
+    private soundPool: Map<string, SoundData> = new Map();
+    private readonly poolSize: number = 10;
+
+    constructor() {
         this.initAudioContext();
     }
 
-    initAudioContext() {
+    private initAudioContext(): void {
         try {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         } catch (e) {
             console.warn('Web Audio API not supported', e);
         }
     }
 
-    async loadAudio(audioBlob) {
+    async loadAudio(audioBlob: Blob): Promise<HTMLAudioElement> {
         return new Promise((resolve, reject) => {
             const url = URL.createObjectURL(audioBlob);
             this.audio = new Audio(url);
             this.audio.volume = 0.26;
 
             this.audio.addEventListener('loadeddata', () => {
-                resolve(this.audio);
+                resolve(this.audio!);
             });
 
             this.audio.addEventListener('error', reject);
@@ -39,7 +46,7 @@ export class AudioManager {
     }
 
     // 异步加载音效到池中
-    async loadSound(name, url) {
+    async loadSound(name: string, url: string): Promise<void> {
         if (!this.audioContext) return;
 
         try {
@@ -52,14 +59,14 @@ export class AudioManager {
                 instances: []
             });
 
-            console.log(`Sound "${name}" loaded successfully`);
+
         } catch (e) {
             console.error(`Failed to load sound "${name}":`, e);
         }
     }
 
     // 异步播放音效（使用对象池）
-    async playSound(name, volume = 1.0) {
+    async playSound(name: string, volume: number = 1.0): Promise<void> {
         if (!this.audioContext || !this.soundPool.has(name)) {
             return;
         }
@@ -69,20 +76,20 @@ export class AudioManager {
             await this.audioContext.resume();
         }
 
-        const soundData = this.soundPool.get(name);
+        const soundData = this.soundPool.get(name)!;
 
         // 使用 Promise 包装播放逻辑，实现真正的异步
         return new Promise((resolve) => {
             // 使用 setTimeout 将音效播放推到下一个事件循环
             setTimeout(() => {
-                const source = this.audioContext.createBufferSource();
+                const source = this.audioContext!.createBufferSource();
                 source.buffer = soundData.buffer;
 
-                const gainNode = this.audioContext.createGain();
+                const gainNode = this.audioContext!.createGain();
                 gainNode.gain.value = volume;
 
                 source.connect(gainNode);
-                gainNode.connect(this.audioContext.destination);
+                gainNode.connect(this.audioContext!.destination);
 
                 source.onended = () => {
                     source.disconnect();
@@ -96,13 +103,13 @@ export class AudioManager {
     }
 
     // 批量异步播放（不等待完成）
-    playSound_nonBlocking(name, volume = 1.0) {
+    playSound_nonBlocking(name: string, volume: number = 1.0): void {
         this.playSound(name, volume).catch(e => {
             console.warn(`Sound playback error: ${e}`);
         });
     }
 
-    play(startTime = 0) {
+    play(startTime: number = 0): void {
         if (this.audio) {
             this.audio.currentTime = startTime;
             this.audio.playbackRate = this.playbackRate;
@@ -116,7 +123,7 @@ export class AudioManager {
         }
     }
 
-    pause() {
+    pause(): void {
         if (this.audio) {
             this.audio.pause();
             this.pauseTime = this.audio.currentTime;
@@ -124,7 +131,7 @@ export class AudioManager {
         }
     }
 
-    stop() {
+    stop(): void {
         if (this.audio) {
             this.audio.pause();
             this.audio.currentTime = 0;
@@ -133,27 +140,27 @@ export class AudioManager {
         }
     }
 
-    setPlaybackRate(rate) {
+    setPlaybackRate(rate: number): void {
         this.playbackRate = rate;
         if (this.audio) {
             this.audio.playbackRate = rate;
         }
     }
 
-    getCurrentTime() {
+    getCurrentTime(): number {
         return this.audio ? this.audio.currentTime * 1000 : 0;
     }
 
-    getDuration() {
+    getDuration(): number {
         return this.audio ? this.audio.duration : 0;
     }
 
-    getIsPlaying() {
+    getIsPlaying(): boolean {
         return this.isPlaying;
     }
 
     // 清理资源
-    dispose() {
+    dispose(): void {
         this.soundPool.clear();
         if (this.audioContext) {
             this.audioContext.close();

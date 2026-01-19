@@ -1,11 +1,58 @@
-// 粒子计算工作线程
-class ParticleWorker {
-    constructor() {
-        this.hitEffects = [];
-        this.ambientParticles = [];
-    }
+// 粒子计算工作线程 - TypeScript版本
 
-    initAmbient(count, width, height) {
+interface AmbientParticle {
+    x: number;
+    y: number;
+    r: number;
+    alpha: number;
+    vx: number;
+    vy: number;
+}
+
+interface HitEffectParticle {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    life: number;
+    decay: number;
+    size: number;
+    color: string;
+    isExplosion?: boolean;
+}
+
+interface WorkerMessage {
+    type: 'initAmbient' | 'updateAmbient' | 'createHit' | 'updateHit' | 'hitCreate' | 'clearHit';
+    data: any;
+}
+
+interface InitAmbientData {
+    count: number;
+    width: number;
+    height: number;
+}
+
+interface UpdateAmbientData {
+    width: number;
+    height: number;
+}
+
+interface CreateHitData {
+    x: number;
+    y: number;
+    color: string;
+    laneWidth: number;
+}
+
+interface UpdateHitData {
+    height: number;
+}
+
+class ParticleWorker {
+    private hitEffects: HitEffectParticle[] = [];
+    private ambientParticles: AmbientParticle[] = [];
+
+    initAmbient(count: number, width: number, height: number): void {
         this.ambientParticles = [];
         for (let i = 0; i < count; i++) {
             this.ambientParticles.push({
@@ -19,7 +66,7 @@ class ParticleWorker {
         }
     }
 
-    updateAmbient(width, height) {
+    updateAmbient(width: number, height: number): AmbientParticle[] {
         for (const p of this.ambientParticles) {
             p.x += p.vx;
             p.y += p.vy;
@@ -38,9 +85,9 @@ class ParticleWorker {
         return this.ambientParticles;
     }
 
-    createHit(x, y, color, laneWidth) {
+    createHit(x: number, y: number, color: string, laneWidth: number): HitEffectParticle[] {
         const particleCount = 30;
-        const newParticles = [];
+        const newParticles: HitEffectParticle[] = [];
 
         for (let i = 0; i < particleCount; i++) {
             const angle = -Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 2);
@@ -68,10 +115,11 @@ class ParticleWorker {
         });
 
         this.hitEffects.push(...newParticles);
+        return this.hitEffects;
     }
 
-    updateHit(height) {
-        const next = [];
+    updateHit(height: number): HitEffectParticle[] {
+        const next: HitEffectParticle[] = [];
         for (const e of this.hitEffects) {
             e.x += e.vx;
             e.y += e.vy;
@@ -87,31 +135,54 @@ class ParticleWorker {
         this.hitEffects = next;
         return this.hitEffects;
     }
+
+    clearHit(): HitEffectParticle[] {
+        this.hitEffects = [];
+        return this.hitEffects;
+    }
 }
 
 const worker = new ParticleWorker();
 
-self.onmessage = function(e) {
+self.onmessage = function (e: MessageEvent<WorkerMessage>) {
     const { type, data } = e.data;
 
-    switch(type) {
+    switch (type) {
         case 'initAmbient':
-            worker.initAmbient(data.count, data.width, data.height);
-            self.postMessage({ type: 'ambientInit', data: worker.ambientParticles });
+            worker.initAmbient(
+                (data as InitAmbientData).count,
+                (data as InitAmbientData).width,
+                (data as InitAmbientData).height
+            );
+            self.postMessage({ type: 'ambientInit', data: worker['ambientParticles'] });
             break;
 
         case 'updateAmbient':
-            const ambient = worker.updateAmbient(data.width, data.height);
+            const ambient = worker.updateAmbient(
+                (data as UpdateAmbientData).width,
+                (data as UpdateAmbientData).height
+            );
             self.postMessage({ type: 'ambientUpdate', data: ambient });
             break;
 
         case 'createHit':
-            worker.createHit(data.x, data.y, data.color, data.laneWidth);
+            const newHits = worker.createHit(
+                (data as CreateHitData).x,
+                (data as CreateHitData).y,
+                (data as CreateHitData).color,
+                (data as CreateHitData).laneWidth
+            );
+            self.postMessage({ type: 'hitCreate', data: newHits });
             break;
 
         case 'updateHit':
-            const hits = worker.updateHit(data.height);
-            self.postMessage({ type: 'hitUpdate', data: hits });
+            const updatedHits = worker.updateHit((data as UpdateHitData).height);
+            self.postMessage({ type: 'hitUpdate', data: updatedHits });
+            break;
+
+        case 'clearHit':
+            const clearedHits = worker.clearHit();
+            self.postMessage({ type: 'hitUpdate', data: clearedHits });
             break;
     }
 };
